@@ -839,7 +839,7 @@ func (g *GoCloak) CreateComponent(ctx context.Context, token, realm string, comp
 	return getID(resp), nil
 }
 
-// CreateClient creates the given g.
+// CreateClient creates the given client.
 func (g *GoCloak) CreateClient(ctx context.Context, accessToken, realm string, newClient Client) (string, error) {
 	const errMessage = "could not create client"
 
@@ -917,6 +917,21 @@ func (g *GoCloak) CreateClientScopeProtocolMapper(ctx context.Context, token, re
 	return getID(resp), nil
 }
 
+// CreateOrganization creates the given organization.
+func (g *GoCloak) CreateOrganization(ctx context.Context, accessToken, realm string, newOrganization Organization) (string, error) {
+	const errMessage = "could not create organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
+		SetBody(newOrganization).
+		Post(g.getAdminRealmURL(realm, "organizations"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return "", err
+	}
+
+	return getID(resp), nil
+}
+
 // UpdateGroup updates the given group.
 func (g *GoCloak) UpdateGroup(ctx context.Context, token, realm string, updatedGroup Group) error {
 	const errMessage = "could not update group"
@@ -949,7 +964,7 @@ func (g *GoCloak) UpdateGroupManagementPermissions(ctx context.Context, accessTo
 	return &result, nil
 }
 
-// UpdateClient updates the given Client
+// UpdateClient updates the given client
 func (g *GoCloak) UpdateClient(ctx context.Context, token, realm string, updatedClient Client) error {
 	const errMessage = "could not update client"
 
@@ -1037,6 +1052,21 @@ func (g *GoCloak) UpdateClientScopeProtocolMapper(ctx context.Context, token, re
 	return checkForError(resp, err, errMessage)
 }
 
+// UpdateOrganization updates the given organization
+func (g *GoCloak) UpdateOrganization(ctx context.Context, token, realm string, updatedOrganization Organization) error {
+	const errMessage = "could not update client"
+
+	if NilOrEmpty(updatedOrganization.ID) {
+		return errors.Wrap(errors.New("ID of a client required"), errMessage)
+	}
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetBody(updatedOrganization).
+		Put(g.getAdminRealmURL(realm, "organizations", PString(updatedOrganization.ID)))
+
+	return checkForError(resp, err, errMessage)
+}
+
 // DeleteGroup deletes the group with the given groupID.
 func (g *GoCloak) DeleteGroup(ctx context.Context, token, realm, groupID string) error {
 	const errMessage = "could not delete group"
@@ -1103,6 +1133,16 @@ func (g *GoCloak) DeleteClientScopeProtocolMapper(ctx context.Context, token, re
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		Delete(g.getAdminRealmURL(realm, "client-scopes", scopeID, "protocol-mappers", "models", protocolMapperID))
+
+	return checkForError(resp, err, errMessage)
+}
+
+// DeleteOrganization deletes a given organization
+func (g *GoCloak) DeleteOrganization(ctx context.Context, token, realm, idOfOrganization string) error {
+	const errMessage = "could not delete organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		Delete(g.getAdminRealmURL(realm, "organization", idOfOrganization))
 
 	return checkForError(resp, err, errMessage)
 }
@@ -1779,6 +1819,23 @@ func (g *GoCloak) GetGroup(ctx context.Context, token, realm, groupID string) (*
 	return &result, nil
 }
 
+// GetOrganization get organization with id in realm
+func (g *GoCloak) GetOrganization(ctx context.Context, token, realm, organizationID string) (*Organization, error) {
+	const errMessage = "could not get organization"
+
+	var result Organization
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations", organizationID))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 // GetChildGroups get child groups of group with id in realm
 func (g *GoCloak) GetChildGroups(ctx context.Context, token, realm, groupID string, params GetChildGroupsParams) ([]*Group, error) {
 	const errMessage = "could not get child groups"
@@ -2134,6 +2191,27 @@ func (g *GoCloak) GetClientManagementPermissions(ctx context.Context, token, rea
 	}
 
 	return &result, nil
+}
+
+// GetOrganizations gets all organizations in realm
+func (g *GoCloak) GetOrganizations(ctx context.Context, token, realm string, params GetOrganizationsParams) ([]*Organization, error) {
+	const errMessage = "could not get organizations"
+
+	var result []*Organization
+	queryParams, err := GetQueryParams(params)
+	if err != nil {
+		return nil, errors.Wrap(err, errMessage)
+	}
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		SetQueryParams(queryParams).
+		Get(g.getAdminRealmURL(realm, "organizations"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // UserAttributeContains checks if the given attribute value is set

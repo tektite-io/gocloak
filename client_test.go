@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -63,7 +62,6 @@ const (
 
 func GetConfig(t testing.TB) *Config {
 	configOnce.Do(func() {
-		rand.Seed(time.Now().UTC().UnixNano())
 		configFileName, ok := os.LookupEnv("GOCLOAK_TEST_CONFIG")
 		if !ok {
 			configFileName = filepath.Join("testdata", "config.json")
@@ -964,7 +962,7 @@ func Test_LoginSignedJWT(t *testing.T) {
 	defer func() {
 		require.NoError(t, f.Close())
 	}()
-	pfxData, err := ioutil.ReadAll(f)
+	pfxData, err := io.ReadAll(f)
 	require.NoError(t, err)
 	pKey, cert, err := pkcs12.Decode(pfxData, "secret")
 	require.NoError(t, err)
