@@ -917,21 +917,6 @@ func (g *GoCloak) CreateClientScopeProtocolMapper(ctx context.Context, token, re
 	return getID(resp), nil
 }
 
-// CreateOrganization creates the given organization.
-func (g *GoCloak) CreateOrganization(ctx context.Context, accessToken, realm string, newOrganization Organization) (string, error) {
-	const errMessage = "could not create organization"
-
-	resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
-		SetBody(newOrganization).
-		Post(g.getAdminRealmURL(realm, "organizations"))
-
-	if err := checkForError(resp, err, errMessage); err != nil {
-		return "", err
-	}
-
-	return getID(resp), nil
-}
-
 // UpdateGroup updates the given group.
 func (g *GoCloak) UpdateGroup(ctx context.Context, token, realm string, updatedGroup Group) error {
 	const errMessage = "could not update group"
@@ -1052,21 +1037,6 @@ func (g *GoCloak) UpdateClientScopeProtocolMapper(ctx context.Context, token, re
 	return checkForError(resp, err, errMessage)
 }
 
-// UpdateOrganization updates the given organization
-func (g *GoCloak) UpdateOrganization(ctx context.Context, token, realm string, updatedOrganization Organization) error {
-	const errMessage = "could not update client"
-
-	if NilOrEmpty(updatedOrganization.ID) {
-		return errors.Wrap(errors.New("ID of a client required"), errMessage)
-	}
-
-	resp, err := g.GetRequestWithBearerAuth(ctx, token).
-		SetBody(updatedOrganization).
-		Put(g.getAdminRealmURL(realm, "organizations", PString(updatedOrganization.ID)))
-
-	return checkForError(resp, err, errMessage)
-}
-
 // DeleteGroup deletes the group with the given groupID.
 func (g *GoCloak) DeleteGroup(ctx context.Context, token, realm, groupID string) error {
 	const errMessage = "could not delete group"
@@ -1133,16 +1103,6 @@ func (g *GoCloak) DeleteClientScopeProtocolMapper(ctx context.Context, token, re
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		Delete(g.getAdminRealmURL(realm, "client-scopes", scopeID, "protocol-mappers", "models", protocolMapperID))
-
-	return checkForError(resp, err, errMessage)
-}
-
-// DeleteOrganization deletes a given organization
-func (g *GoCloak) DeleteOrganization(ctx context.Context, token, realm, idOfOrganization string) error {
-	const errMessage = "could not delete organization"
-
-	resp, err := g.GetRequestWithBearerAuth(ctx, token).
-		Delete(g.getAdminRealmURL(realm, "organization", idOfOrganization))
 
 	return checkForError(resp, err, errMessage)
 }
@@ -1819,23 +1779,6 @@ func (g *GoCloak) GetGroup(ctx context.Context, token, realm, groupID string) (*
 	return &result, nil
 }
 
-// GetOrganization get organization with id in realm
-func (g *GoCloak) GetOrganization(ctx context.Context, token, realm, organizationID string) (*Organization, error) {
-	const errMessage = "could not get organization"
-
-	var result Organization
-
-	resp, err := g.GetRequestWithBearerAuth(ctx, token).
-		SetResult(&result).
-		Get(g.getAdminRealmURL(realm, "organizations", organizationID))
-
-	if err := checkForError(resp, err, errMessage); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
 // GetChildGroups get child groups of group with id in realm
 func (g *GoCloak) GetChildGroups(ctx context.Context, token, realm, groupID string, params GetChildGroupsParams) ([]*Group, error) {
 	const errMessage = "could not get child groups"
@@ -2191,27 +2134,6 @@ func (g *GoCloak) GetClientManagementPermissions(ctx context.Context, token, rea
 	}
 
 	return &result, nil
-}
-
-// GetOrganizations gets all organizations in realm
-func (g *GoCloak) GetOrganizations(ctx context.Context, token, realm string, params GetOrganizationsParams) ([]*Organization, error) {
-	const errMessage = "could not get organizations"
-
-	var result []*Organization
-	queryParams, err := GetQueryParams(params)
-	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
-	}
-	resp, err := g.GetRequestWithBearerAuth(ctx, token).
-		SetResult(&result).
-		SetQueryParams(queryParams).
-		Get(g.getAdminRealmURL(realm, "organizations"))
-
-	if err := checkForError(resp, err, errMessage); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 // UserAttributeContains checks if the given attribute value is set
@@ -4604,4 +4526,256 @@ func (g *GoCloak) GetUsersManagementPermissions(ctx context.Context, accessToken
 	}
 
 	return &result, nil
+}
+
+// CreateOrganization creates a new Organization
+func (g *GoCloak) CreateOrganization(ctx context.Context, token, realm string, organization OrganizationRepresentation) (string, error) {
+	const errMessage = "could not create organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetBody(organization).
+		Post(g.getAdminRealmURL(realm, "organizations"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return "", err
+	}
+
+	return getID(resp), nil
+}
+
+// GetOrganizations returns a paginated list of organizations filtered according to the specified parameters
+func (g *GoCloak) GetOrganizations(ctx context.Context, token, realm string, params GetOrganizationsParams) ([]*OrganizationRepresentation, error) {
+	const errMessage = "could not get organizations"
+
+	queryParams, err := GetQueryParams(params)
+	if err != nil {
+		return nil, errors.Wrap(err, errMessage)
+	}
+
+	var result []*OrganizationRepresentation
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetQueryParams(queryParams).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations"))
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetOrganizationByID returns the organization representation of the organization with provided ID
+func (g *GoCloak) GetOrganizationByID(ctx context.Context, token, realm, idOfOrganization string) (*OrganizationRepresentation, error) {
+	const errMessage = "could not find organization"
+	var result *OrganizationRepresentation
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UpdateOrganization updates the given organization
+func (g *GoCloak) UpdateOrganization(ctx context.Context, token, realm string, organization OrganizationRepresentation) error {
+	const errMessage = "could not update organization"
+
+	if NilOrEmpty(organization.ID) {
+		return errors.Wrap(errors.New("ID of an organization required"), errMessage)
+	}
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetBody(organization).
+		Put(g.getAdminRealmURL(realm, "organizations", PString(organization.ID)))
+
+	return checkForError(resp, err, errMessage)
+}
+
+// DeleteOrganization deletes a given organization
+func (g *GoCloak) DeleteOrganization(ctx context.Context, token, realm, idOfOrganization string) error {
+	const errMessage = "could not delete organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		Delete(g.getAdminRealmURL(realm, "organization", idOfOrganization))
+
+	return checkForError(resp, err, errMessage)
+}
+
+// InviteUserToOrganization invites an existing user or sends a registration link to a new user, based on the provided e-mail address.
+// If the user with the given e-mail address exists, it sends an invitation link, otherwise it sends a registration link.
+// An invitation email will be sent to the user so SMTP settings are required in keycloak
+func (g *GoCloak) InviteUserToOrganization(ctx context.Context, token, realm string, idOfOrganization string, user OrganizationInviteUserParams) error {
+	const errMessage = "could not invite organization user"
+
+	err := checkOrganizationInviteUserParams(user)
+	if err != nil {
+		return err
+	}
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetFormData(user.FormData()).
+		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", "invite-user"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkOrganizationInviteUserParams(invitation OrganizationInviteUserParams) error {
+	if NilOrEmpty(invitation.Email) {
+		return errors.New("email required to invite organization user")
+	}
+
+	return nil
+}
+
+// InviteUserToOrganizationByID invites an existing user to the organization, using the specified user id
+// An invitation email will be sent to the user so SMTP settings are required in keycloak
+func (g *GoCloak) InviteUserToOrganizationByID(ctx context.Context, token, realm, idOfOrganization, idOfUser string) error {
+	const errMessage = "could not invite user to organization by id"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetFormData(map[string]string{
+			"id": idOfUser,
+		}).
+		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", "invite-existing-user"))
+
+	return checkForError(resp, err, errMessage)
+}
+
+// AddUserToOrganization adds the user with the specified id as a member of the organization
+// Adds, or associates, an existing user with the organization. If no user is found, or if it is already associated with the organization, an error response is returned
+// No invitation email is sent to the user
+func (g *GoCloak) AddUserToOrganization(ctx context.Context, token, realm, idOfOrganization, idOfUser string) error {
+	const errMessage = "could not add user to organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetBody(idOfUser).
+		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members"))
+
+	return checkForError(resp, err, errMessage)
+}
+
+// GetOrganizationMemberCount returns number of members in the organization.
+func (g *GoCloak) GetOrganizationMemberCount(ctx context.Context, token, realm, idOfOrganization string) (int, error) {
+	const errMessage = "could not get organization members count"
+	var result int
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", "count"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return -1, errors.Wrap(err, errMessage)
+	}
+
+	return result, err
+}
+
+// GetOrganizationMembers returns a paginated list of organization members filtered according to the specified parameters
+func (g *GoCloak) GetOrganizationMembers(ctx context.Context, token, realm, idOfOrganization string, params GetMembersParams) ([]*MemberRepresentation, error) {
+	const errMessage = "could not get organization members"
+
+	var result []*MemberRepresentation
+	queryParams, err := GetQueryParams(params)
+	if err != nil {
+		return nil, errors.Wrap(err, errMessage)
+	}
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		SetQueryParams(queryParams).
+		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, err
+}
+
+// GetOrganizationMemberByID returns the member of the organization with the specified id
+// Searches for auser with the given id. If one is found, and is currently a member of the organization, returns it.
+// Otherwise,an error response with status NOT_FOUND is returned
+func (g *GoCloak) GetOrganizationMemberByID(ctx context.Context, token, realm, idOfOrganization, idOfUser string) (*MemberRepresentation, error) {
+	const errMessage = "could not get organization member by ID"
+	var result *MemberRepresentation
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", idOfUser))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, err
+}
+
+// GetMemberAssociatedOrganizations returns the organizations associated with the user that has the specified id
+func (g *GoCloak) GetMemberAssociatedOrganizations(ctx context.Context, token, realm, idOfUser string) ([]*OrganizationRepresentation, error) {
+	const errMessage = "could not get member's associated organizations"
+	var result []*OrganizationRepresentation
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations", "members", idOfUser, "organizations"))
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, err
+}
+
+// GetOrganizationMemberOrganizations returns organizations for a given user in a given organization
+func (g *GoCloak) GetOrganizationMemberOrganizations(ctx context.Context, accessToken, realm, idOfOrganization, idOfUser string) ([]*OrganizationRepresentation, error) {
+	const errMessage = "could not get organization member organizations"
+
+	if idOfOrganization == "" {
+		return nil, errors.Wrap(errors.New("organizationID shall not be empty"), errMessage)
+	}
+
+	if idOfUser == "" {
+		return nil, errors.Wrap(errors.New("userID shall not be empty"), errMessage)
+	}
+
+	var result []*OrganizationRepresentation
+	resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", idOfUser, "organizations"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RemoveUserFromOrganization removes the user with the specified id from the organization
+func (g *GoCloak) RemoveUserFromOrganization(ctx context.Context, token, realm, idOfOrganization, idOfUser string) error {
+	const errMessage = "could not remove user from organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		Delete(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", idOfUser))
+
+	return checkForError(resp, err, errMessage)
+}
+
+// Adds the identity provider with the specified id to the organization
+// POST /admin/realms/{realm}/organizations/{id}/identity-providers
+func (g *GoCloak) AddIdentityProviderToOrganization(ctx context.Context, token, realm string, idOfOrganization, identityProviderAlias string) error {
+	const errMessage = "could not add identity provider to organization"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetBody(identityProviderAlias).
+		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "identity-providers"))
+
+	return checkForError(resp, err, errMessage)
 }
