@@ -605,7 +605,7 @@ func (g *GoCloak) LoginAdminOtp(ctx context.Context, username, password, totp, r
 		GrantType: StringP("password"),
 		Username:  &username,
 		Password:  &password,
-		Totp:	   &totp,
+		Totp:      &totp,
 	})
 }
 
@@ -4779,7 +4779,8 @@ func (g *GoCloak) RemoveUserFromOrganization(ctx context.Context, token, realm, 
 	return checkForError(resp, err, errMessage)
 }
 
-// Adds the identity provider with the specified id to the organization
+
+// AddIdentityProviderToOrganization adds the identity provider with the specified id to the organization
 // POST /admin/realms/{realm}/organizations/{id}/identity-providers
 func (g *GoCloak) AddIdentityProviderToOrganization(ctx context.Context, token, realm string, idOfOrganization, identityProviderAlias string) error {
 	const errMessage = "could not add identity provider to organization"
