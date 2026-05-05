@@ -3633,17 +3633,7 @@ func (g *GoCloak) CreatePolicy(ctx context.Context, token, realm, idOfClient str
 		return nil, errors.New("type of a policy required")
 	}
 
-	compResult, err := g.compareVersions(ctx, "20.0.0", token)
-	if err != nil {
-		return nil, err
-	}
-	shouldAddType := compResult != 1
-
-	path := []string{"clients", idOfClient, "authz", "resource-server", "policy"}
-
-	if shouldAddType {
-		path = append(path, *policy.Type)
-	}
+	path := []string{"clients", idOfClient, "authz", "resource-server", "policy", *policy.Type}
 
 	var result PolicyRepresentation
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -3666,19 +3656,11 @@ func (g *GoCloak) UpdatePolicy(ctx context.Context, token, realm, idOfClient str
 		return errors.New("ID of a policy required")
 	}
 
-	compResult, err := g.compareVersions(ctx, "20.0.0", token)
-	if err != nil {
-		return err
-	}
-	shouldAddType := compResult != 1
-
-	path := []string{"clients", idOfClient, "authz", "resource-server", "policy"}
-
-	if shouldAddType {
-		path = append(path, *policy.Type)
+	if NilOrEmpty(policy.Type) {
+		return errors.New("type of a policy required")
 	}
 
-	path = append(path, *(policy.ID))
+	path := []string{"clients", idOfClient, "authz", "resource-server", "policy", *policy.Type, *policy.ID}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetBody(policy).
