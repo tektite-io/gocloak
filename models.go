@@ -1589,9 +1589,9 @@ type OrganizationDomainRepresentation struct {
 // OrganizationRepresentation is a representation of an organization
 // v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#OrganizationRepresentation
 type OrganizationRepresentation struct {
-	ID                *string                             `json:"id,omitempty"`
-	Name              *string                             `json:"name,omitempty"`
-	Alias             *string                             `json:"alias,omitempty"`
+	ID   *string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+	// Alias             *string                             `json:"alias,omitempty"`
 	Enabled           *bool                               `json:"enabled,omitempty"`
 	Description       *string                             `json:"description,omitempty"`
 	RedirectURL       *string                             `json:"redirectUrl,omitempty"`

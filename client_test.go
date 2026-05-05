@@ -7128,8 +7128,8 @@ func CreateOrganization(t *testing.T, client gocloak.GoCloakIface, name, alias, 
 	token := GetAdminToken(t, client)
 
 	org := gocloak.OrganizationRepresentation{
-		Name:        gocloak.StringP(name),
-		Alias:       gocloak.StringP(alias),
+		Name: gocloak.StringP(name),
+		// Alias:       gocloak.StringP(alias),
 		Enabled:     gocloak.BoolP(true),
 		Description: gocloak.StringP("Just a test organization"),
 		Domains: &[]gocloak.OrganizationDomainRepresentation{
