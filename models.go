@@ -305,7 +305,7 @@ type GetUsersParams struct {
 // GetComponentsParams represents the optional parameters for getting components
 type GetComponentsParams struct {
 	Name         *string `json:"name,omitempty"`
-	ProviderType *string `json:"provider,omitempty"`
+	ProviderType *string `json:"type,omitempty"`
 	ParentID     *string `json:"parent,omitempty"`
 }
 
