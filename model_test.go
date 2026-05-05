@@ -167,6 +167,58 @@ func TestParseAPIErrType(t *testing.T) {
 	}
 }
 
+func TestRequestingPartyTokenOptionsFormData(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *gocloak.RequestingPartyTokenOptions
+		expected map[string]string
+	}{
+		{
+			name:  "Empty input",
+			input: &gocloak.RequestingPartyTokenOptions{},
+			expected: map[string]string{
+				"grant_type":                     "urn:ietf:params:oauth:grant-type:uma-ticket",
+				"response_include_resource_name": "true",
+			},
+		},
+		{
+			name: "With grant type and response include resource name",
+			input: &gocloak.RequestingPartyTokenOptions{
+				GrantType:                   ptr("custom_grant_type"),
+				ResponseIncludeResourceName: ptr(false),
+			},
+			expected: map[string]string{
+				"grant_type":                     "custom_grant_type",
+				"response_include_resource_name": "false",
+			},
+		},
+		{
+			name: "With various field types",
+			input: &gocloak.RequestingPartyTokenOptions{
+				Ticket:                        ptr("ticket123"),
+				PermissionResourceMatchingURI: ptr(true),
+				ResponsePermissionsLimit:      ptr(uint32(10)),
+			},
+			expected: map[string]string{
+				"grant_type":                       "urn:ietf:params:oauth:grant-type:uma-ticket",
+				"response_include_resource_name":   "true",
+				"ticket":                           "ticket123",
+				"permission_resource_matching_uri": "true",
+				"response_permissions_limit":       "10",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.input.FormData()
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("FormData() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestStringer(t *testing.T) {
 	// nested structs
 	actions := []string{"someAction", "anotherAction"}
@@ -337,62 +389,13 @@ func TestStringerOmitEmpty(t *testing.T) {
 		&gocloak.RequestingPartyTokenOptions{},
 		&gocloak.RequestingPartyPermission{},
 		&gocloak.GetClientUserSessionsParams{},
+		&gocloak.GetOrganizationsParams{},
+		&gocloak.OrganizationDomainRepresentation{},
+		&gocloak.OrganizationRepresentation{},
 	}
 
 	for _, custom := range customs {
-		assert.Equal(t, "{}", custom.(Stringable).String())
-	}
-}
-
-func TestRequestingPartyTokenOptionsFormData(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    *gocloak.RequestingPartyTokenOptions
-		expected map[string]string
-	}{
-		{
-			name:  "Empty input",
-			input: &gocloak.RequestingPartyTokenOptions{},
-			expected: map[string]string{
-				"grant_type":                     "urn:ietf:params:oauth:grant-type:uma-ticket",
-				"response_include_resource_name": "true",
-			},
-		},
-		{
-			name: "With grant type and response include resource name",
-			input: &gocloak.RequestingPartyTokenOptions{
-				GrantType:                   ptr("custom_grant_type"),
-				ResponseIncludeResourceName: ptr(false),
-			},
-			expected: map[string]string{
-				"grant_type":                     "custom_grant_type",
-				"response_include_resource_name": "false",
-			},
-		},
-		{
-			name: "With various field types",
-			input: &gocloak.RequestingPartyTokenOptions{
-				Ticket:                        ptr("ticket123"),
-				PermissionResourceMatchingURI: ptr(true),
-				ResponsePermissionsLimit:      ptr(uint32(10)),
-			},
-			expected: map[string]string{
-				"grant_type":                       "urn:ietf:params:oauth:grant-type:uma-ticket",
-				"response_include_resource_name":   "true",
-				"ticket":                           "ticket123",
-				"permission_resource_matching_uri": "true",
-				"response_permissions_limit":       "10",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.input.FormData()
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("FormData() = %v, want %v", result, tt.expected)
-			}
-		})
+		assert.Equal(t, "{}", custom.String())
 	}
 }
 
