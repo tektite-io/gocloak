@@ -7123,9 +7123,13 @@ func Test_RevokeToken(t *testing.T) {
 // Organizations
 // -----------
 
-func CreateOrganization(t *testing.T, client gocloak.GoCloakIface, name, alias, domain string) (func(), string) {
+func CreateOrganization(t *testing.T, client gocloak.GoCloakIface) (func(), string) {
 	cfg := GetConfig(t)
 	token := GetAdminToken(t, client)
+
+	name := GetRandomName("OrgName")
+	alias := strings.ToLower(GetRandomName("orgalias"))
+	domain := strings.ToLower(GetRandomName("orgdomain")) + ".com"
 
 	org := gocloak.OrganizationRepresentation{
 		Name:        gocloak.StringP(name),
@@ -7148,8 +7152,7 @@ func CreateOrganization(t *testing.T, client gocloak.GoCloakIface, name, alias, 
 
 	require.NoError(t, err, "CreateOrganization failed")
 
-	org.ID = &orgID
-	t.Logf("Created Organization: %+v", org)
+	t.Logf("Created Organization: %s (alias: %s, domain: %s)", name, alias, domain)
 	tearDown := func() {
 		err := client.DeleteOrganization(
 			context.Background(),
@@ -7166,7 +7169,7 @@ func Test_CreateOrganization(t *testing.T) {
 	t.Parallel()
 	client := NewClientWithDebug(t)
 
-	tearDown, _ := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, _ := CreateOrganization(t, client)
 	defer tearDown()
 }
 
@@ -7177,10 +7180,10 @@ func Test_GetOrganizations(t *testing.T) {
 	token := GetAdminToken(t, client)
 
 	// Create two organizations
-	tearDown1, _ := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown1, _ := CreateOrganization(t, client)
 	defer tearDown1()
 
-	tearDown2, _ := CreateOrganization(t, client, "Another Inc", "another-inc", "another.com")
+	tearDown2, _ := CreateOrganization(t, client)
 	defer tearDown2()
 
 	organizations, err := client.GetOrganizations(
@@ -7189,7 +7192,7 @@ func Test_GetOrganizations(t *testing.T) {
 		cfg.GoCloak.Realm,
 		gocloak.GetOrganizationsParams{})
 	require.NoError(t, err, "GetOrganizations failed")
-	require.Equal(t, 2, len(organizations))
+	require.GreaterOrEqual(t, len(organizations), 2)
 	t.Log(organizations)
 }
 
@@ -7199,18 +7202,27 @@ func Test_GetOrganizationsByName(t *testing.T) {
 	client := NewClientWithDebug(t)
 	token := GetAdminToken(t, client)
 
-	tearDown, _ := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
-	defer tearDown()
+	name := GetRandomName("OrgName")
+	alias := strings.ToLower(GetRandomName("orgalias"))
+	domain := strings.ToLower(GetRandomName("orgdomain")) + ".com"
+	org := gocloak.OrganizationRepresentation{
+		Name:    gocloak.StringP(name),
+		Alias:   gocloak.StringP(alias),
+		Enabled: gocloak.BoolP(true),
+		Domains: &[]gocloak.OrganizationDomainRepresentation{{Name: gocloak.StringP(domain), Verified: gocloak.BoolP(true)}},
+	}
+	ctx := context.Background()
+	orgID, err := client.CreateOrganization(ctx, token.AccessToken, cfg.GoCloak.Realm, org)
+	require.NoError(t, err, "CreateOrganization failed")
+	defer func() {
+		_ = client.DeleteOrganization(ctx, token.AccessToken, cfg.GoCloak.Realm, orgID)
+	}()
 
-	organization, err := client.GetOrganizations(
-		context.Background(),
-		token.AccessToken,
-		cfg.GoCloak.Realm,
-		gocloak.GetOrganizationsParams{
-			Search: gocloak.StringP("Test Inc"),
-		})
-	require.NoError(t, err, "GetOrganizationByName failed")
-	t.Log(organization)
+	organizations, err := client.GetOrganizations(ctx, token.AccessToken, cfg.GoCloak.Realm,
+		gocloak.GetOrganizationsParams{Search: gocloak.StringP(name)})
+	require.NoError(t, err, "GetOrganizationsByName failed")
+	require.GreaterOrEqual(t, len(organizations), 1)
+	t.Log(organizations)
 }
 
 func Test_GetOrganizationsByDomain(t *testing.T) {
@@ -7219,18 +7231,27 @@ func Test_GetOrganizationsByDomain(t *testing.T) {
 	client := NewClientWithDebug(t)
 	token := GetAdminToken(t, client)
 
-	tearDown, _ := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
-	defer tearDown()
+	name := GetRandomName("OrgName")
+	alias := strings.ToLower(GetRandomName("orgalias"))
+	domain := strings.ToLower(GetRandomName("orgdomain")) + ".com"
+	org := gocloak.OrganizationRepresentation{
+		Name:    gocloak.StringP(name),
+		Alias:   gocloak.StringP(alias),
+		Enabled: gocloak.BoolP(true),
+		Domains: &[]gocloak.OrganizationDomainRepresentation{{Name: gocloak.StringP(domain), Verified: gocloak.BoolP(true)}},
+	}
+	ctx := context.Background()
+	orgID, err := client.CreateOrganization(ctx, token.AccessToken, cfg.GoCloak.Realm, org)
+	require.NoError(t, err, "CreateOrganization failed")
+	defer func() {
+		_ = client.DeleteOrganization(ctx, token.AccessToken, cfg.GoCloak.Realm, orgID)
+	}()
 
-	organization, err := client.GetOrganizations(
-		context.Background(),
-		token.AccessToken,
-		cfg.GoCloak.Realm,
-		gocloak.GetOrganizationsParams{
-			Search: gocloak.StringP("test-inc.org"),
-		})
-	require.NoError(t, err, "GetOrganizationByDomain failed")
-	t.Log(organization)
+	organizations, err := client.GetOrganizations(ctx, token.AccessToken, cfg.GoCloak.Realm,
+		gocloak.GetOrganizationsParams{Search: gocloak.StringP(domain)})
+	require.NoError(t, err, "GetOrganizationsByDomain failed")
+	require.GreaterOrEqual(t, len(organizations), 1)
+	t.Log(organizations)
 }
 
 func Test_GetOrganizationByID(t *testing.T) {
@@ -7239,7 +7260,7 @@ func Test_GetOrganizationByID(t *testing.T) {
 	client := NewClientWithDebug(t)
 	token := GetAdminToken(t, client)
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	organization, err := client.GetOrganizationByID(
@@ -7257,7 +7278,7 @@ func Test_UpdateOrganization(t *testing.T) {
 	client := NewClientWithDebug(t)
 	token := GetAdminToken(t, client)
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	organization, err := client.GetOrganizationByID(
@@ -7287,7 +7308,7 @@ func Test_InviteUserToOrganizationByID(t *testing.T) {
 	td, userID := CreateUser(t, client)
 	defer td()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	err := client.InviteUserToOrganizationByID(
@@ -7308,7 +7329,7 @@ func Test_InviteUserToOrganizationByEmail(t *testing.T) {
 	td, userID := CreateUser(t, client)
 	defer td()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	ctx := context.Background()
@@ -7341,7 +7362,7 @@ func Test_AddUserToOrganization(t *testing.T) {
 	td, userID := CreateUser(t, client)
 	defer td()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	err := client.AddUserToOrganization(
@@ -7362,7 +7383,7 @@ func Test_RemoveUserFromOrganization(t *testing.T) {
 	td, userID := CreateUser(t, client)
 	defer td()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	ctx := context.Background()
@@ -7393,7 +7414,7 @@ func Test_GetOrganizationMemberCount(t *testing.T) {
 	td, userID := CreateUser(t, client)
 	defer td()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	ctx := context.Background()
@@ -7425,7 +7446,7 @@ func Test_GetOrganizationMemberByID(t *testing.T) {
 	td, userID := CreateUser(t, client)
 	defer td()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	ctx := context.Background()
@@ -7460,7 +7481,7 @@ func Test_GetOrganizationMembers(t *testing.T) {
 	td2, userID2 := CreateUser(t, client)
 	defer td2()
 
-	tearDown, orgID := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown, orgID := CreateOrganization(t, client)
 	defer tearDown()
 
 	ctx := context.Background()
@@ -7502,10 +7523,10 @@ func Test_GetMemberAssociatedOrganizations(t *testing.T) {
 	defer td()
 
 	// Create two organizations
-	tearDown1, orgID1 := CreateOrganization(t, client, "Test Inc", "test-inc", "test.com")
+	tearDown1, orgID1 := CreateOrganization(t, client)
 	defer tearDown1()
 
-	tearDown2, orgID2 := CreateOrganization(t, client, "Another Inc", "another-inc", "another.com")
+	tearDown2, orgID2 := CreateOrganization(t, client)
 	defer tearDown2()
 
 	// Add user to both organizations
