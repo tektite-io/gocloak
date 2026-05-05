@@ -1,3 +1,4 @@
+// Package jwx provides jwt token utility function
 package jwx
 
 import (

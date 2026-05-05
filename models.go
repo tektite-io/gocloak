@@ -984,15 +984,19 @@ func (t *TokenOptions) FormData() map[string]string {
 	if !NilOrEmptySlice(t.Scopes) {
 		t.Scope = StringP(strings.Join(*t.Scopes, " "))
 	}
+
 	if !NilOrEmptySlice(t.ResponseTypes) {
 		t.ResponseType = StringP(strings.Join(*t.ResponseTypes, " "))
 	}
+
 	if NilOrEmpty(t.ResponseType) {
 		t.ResponseType = StringP("token")
 	}
-	m, _ := json.Marshal(t)
+
+	m, _ := json.Marshal(t) //nolint:gosec
 	var res map[string]string
 	_ = json.Unmarshal(m, &res)
+
 	return res
 }
 
@@ -1042,7 +1046,7 @@ func (t *RequestingPartyTokenOptions) FormData() map[string]string { //nolint:go
 		}
 
 		switch field.Kind() {
-		case reflect.Ptr:
+		case reflect.Ptr: //nolint
 			if !field.IsNil() {
 				switch field.Elem().Kind() {
 				case reflect.String:

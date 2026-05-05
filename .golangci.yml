@@ -1,38 +1,33 @@
+version: "2"
 linters:
   enable:
-    - goimports
-    - gofmt
-    - misspell
-    - gosec
-    - unconvert
-    - revive
     - gocognit
     - gocyclo
-  fast: true
+    - gosec
+    - misspell
+    - revive
+    - unconvert
 
-linters-settings:
-  misspell:
-    locale: US
-  goimports:
-    local-prefixes: github.com/Nerzal/gocloak
-  gocognit:
-    min-complexity: 15
-  gocyclo:
-    min-complexity: 15
-  gofmt:
-    simplify: true
+run:
+  timeout: 1m
+  issues-exit-code: 1
+  tests: false
+  enable-build-vcs: false
+  allow-parallel-runners: true
+  allow-serial-runners: false
+  go: "1.26"
+  concurrency: 4
+  modules-download-mode: mod
+  
+output:
+  path-mode: abs
+  path-prefix: ""
+  show-stats: true
 
-issues:
-  exclude-dirs:
-    - (^|/)testdata($|/)
-  exclude-dirs-use-default: false
-  exclude-use-default: false
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - dupl
-        - gosec
-        - gocognit
-  exclude:
-    - should have a package comment
+formatters:
+  enable:
+    - gofmt
+    - swaggo
+    - goimports
+    
+
