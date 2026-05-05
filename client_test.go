@@ -651,7 +651,7 @@ func Test_GetRawUserInfo(t *testing.T) {
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
 	token := GetUserToken(t, client)
-	userInfo, err := client.GetUserInfo(
+	userInfo, err := client.GetRawUserInfo(
 		context.Background(),
 		token.AccessToken,
 		cfg.GoCloak.Realm,
@@ -7117,3 +7117,4 @@ func Test_RevokeToken(t *testing.T) {
 	)
 	require.NoError(t, err, "Revoke failed")
 }
+
