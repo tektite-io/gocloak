@@ -462,6 +462,8 @@ type ProtocolMappersConfig struct {
 	Single                             *string `json:"single,omitempty"`
 	Script                             *string `json:"script,omitempty"`
 	UserSessionNote                    *string `json:"user.session.note,omitempty"`
+	AddOrganizationAttributes          *string `json:"addOrganizationAttributes,omitempty"`
+	AddOrganizationId                  *string `json:"addOrganizationId,omitempty"`
 }
 
 // Client is a ClientRepresentation
@@ -739,122 +741,133 @@ type RolesRepresentation struct {
 
 // RealmRepresentation represents a realm
 type RealmRepresentation struct {
-	AccessCodeLifespan                                        *int                      `json:"accessCodeLifespan,omitempty"`
-	AccessCodeLifespanLogin                                   *int                      `json:"accessCodeLifespanLogin,omitempty"`
-	AccessCodeLifespanUserAction                              *int                      `json:"accessCodeLifespanUserAction,omitempty"`
-	AccessTokenLifespan                                       *int                      `json:"accessTokenLifespan,omitempty"`
-	AccessTokenLifespanForImplicitFlow                        *int                      `json:"accessTokenLifespanForImplicitFlow,omitempty"`
-	AccountTheme                                              *string                   `json:"accountTheme,omitempty"`
-	ActionTokenGeneratedByAdminLifespan                       *int                      `json:"actionTokenGeneratedByAdminLifespan,omitempty"`
-	ActionTokenGeneratedByUserLifespan                        *int                      `json:"actionTokenGeneratedByUserLifespan,omitempty"`
-	AdminEventsDetailsEnabled                                 *bool                     `json:"adminEventsDetailsEnabled,omitempty"`
-	AdminEventsEnabled                                        *bool                     `json:"adminEventsEnabled,omitempty"`
-	AdminTheme                                                *string                   `json:"adminTheme,omitempty"`
-	Attributes                                                *map[string]string        `json:"attributes,omitempty"`
-	AuthenticationFlows                                       *[]interface{}            `json:"authenticationFlows,omitempty"`
-	AuthenticatorConfig                                       *[]interface{}            `json:"authenticatorConfig,omitempty"`
-	BrowserFlow                                               *string                   `json:"browserFlow,omitempty"`
-	BrowserSecurityHeaders                                    *map[string]string        `json:"browserSecurityHeaders,omitempty"`
-	BruteForceProtected                                       *bool                     `json:"bruteForceProtected,omitempty"`
-	ClientAuthenticationFlow                                  *string                   `json:"clientAuthenticationFlow,omitempty"`
-	ClientPolicies                                            *map[string][]interface{} `json:"clientPolicies,omitempty"`
-	ClientProfiles                                            *map[string][]interface{} `json:"clientProfiles,omitempty"`
-	ClientScopeMappings                                       *map[string][]interface{} `json:"clientScopeMappings,omitempty"`
-	ClientScopes                                              *[]ClientScope            `json:"clientScopes,omitempty"`
-	Clients                                                   *[]Client                 `json:"clients,omitempty"`
-	Components                                                interface{}               `json:"components,omitempty"`
-	DefaultDefaultClientScopes                                *[]string                 `json:"defaultDefaultClientScopes,omitempty"`
-	DefaultGroups                                             *[]string                 `json:"defaultGroups,omitempty"`
-	DefaultLocale                                             *string                   `json:"defaultLocale,omitempty"`
-	DefaultOptionalClientScopes                               *[]string                 `json:"defaultOptionalClientScopes,omitempty"`
-	DefaultRole                                               *Role                     `json:"defaultRole,omitempty"`
-	DefaultRoles                                              *[]string                 `json:"defaultRoles,omitempty"`
-	DefaultSignatureAlgorithm                                 *string                   `json:"defaultSignatureAlgorithm,omitempty"`
-	DirectGrantFlow                                           *string                   `json:"directGrantFlow,omitempty"`
-	DisplayName                                               *string                   `json:"displayName,omitempty"`
-	DisplayNameHTML                                           *string                   `json:"displayNameHtml,omitempty"`
-	DockerAuthenticationFlow                                  *string                   `json:"dockerAuthenticationFlow,omitempty"`
-	DuplicateEmailsAllowed                                    *bool                     `json:"duplicateEmailsAllowed,omitempty"`
-	EditUsernameAllowed                                       *bool                     `json:"editUsernameAllowed,omitempty"`
-	EmailTheme                                                *string                   `json:"emailTheme,omitempty"`
-	Enabled                                                   *bool                     `json:"enabled,omitempty"`
-	EnabledEventTypes                                         *[]string                 `json:"enabledEventTypes,omitempty"`
-	EventsEnabled                                             *bool                     `json:"eventsEnabled,omitempty"`
-	EventsExpiration                                          *int64                    `json:"eventsExpiration,omitempty"`
-	EventsListeners                                           *[]string                 `json:"eventsListeners,omitempty"`
-	FailureFactor                                             *int                      `json:"failureFactor,omitempty"`
-	FederatedUsers                                            *[]interface{}            `json:"federatedUsers,omitempty"`
-	Groups                                                    *[]interface{}            `json:"groups,omitempty"`
-	ID                                                        *string                   `json:"id,omitempty"`
-	IdentityProviderMappers                                   *[]interface{}            `json:"identityProviderMappers,omitempty"`
-	IdentityProviders                                         *[]interface{}            `json:"identityProviders,omitempty"`
-	InternationalizationEnabled                               *bool                     `json:"internationalizationEnabled,omitempty"`
-	KeycloakVersion                                           *string                   `json:"keycloakVersion,omitempty"`
-	LoginTheme                                                *string                   `json:"loginTheme,omitempty"`
-	LoginWithEmailAllowed                                     *bool                     `json:"loginWithEmailAllowed,omitempty"`
-	MaxDeltaTimeSeconds                                       *int                      `json:"maxDeltaTimeSeconds,omitempty"`
-	MaxFailureWaitSeconds                                     *int                      `json:"maxFailureWaitSeconds,omitempty"`
-	MinimumQuickLoginWaitSeconds                              *int                      `json:"minimumQuickLoginWaitSeconds,omitempty"`
-	NotBefore                                                 *int                      `json:"notBefore,omitempty"`
-	OfflineSessionIdleTimeout                                 *int                      `json:"offlineSessionIdleTimeout,omitempty"`
-	OfflineSessionMaxLifespan                                 *int                      `json:"offlineSessionMaxLifespan,omitempty"`
-	OfflineSessionMaxLifespanEnabled                          *bool                     `json:"offlineSessionMaxLifespanEnabled,omitempty"`
-	OtpPolicyAlgorithm                                        *string                   `json:"otpPolicyAlgorithm,omitempty"`
-	OtpPolicyDigits                                           *int                      `json:"otpPolicyDigits,omitempty"`
-	OtpPolicyInitialCounter                                   *int                      `json:"otpPolicyInitialCounter,omitempty"`
-	OtpPolicyLookAheadWindow                                  *int                      `json:"otpPolicyLookAheadWindow,omitempty"`
-	OtpPolicyPeriod                                           *int                      `json:"otpPolicyPeriod,omitempty"`
-	OtpPolicyType                                             *string                   `json:"otpPolicyType,omitempty"`
-	OtpSupportedApplications                                  *[]string                 `json:"otpSupportedApplications,omitempty"`
-	PasswordPolicy                                            *string                   `json:"passwordPolicy,omitempty"`
-	PermanentLockout                                          *bool                     `json:"permanentLockout,omitempty"`
-	ProtocolMappers                                           *[]interface{}            `json:"protocolMappers,omitempty"`
-	QuickLoginCheckMilliSeconds                               *int64                    `json:"quickLoginCheckMilliSeconds,omitempty"`
-	Realm                                                     *string                   `json:"realm,omitempty"`
-	RefreshTokenMaxReuse                                      *int                      `json:"refreshTokenMaxReuse,omitempty"`
-	RegistrationAllowed                                       *bool                     `json:"registrationAllowed,omitempty"`
-	RegistrationEmailAsUsername                               *bool                     `json:"registrationEmailAsUsername,omitempty"`
-	RegistrationFlow                                          *string                   `json:"registrationFlow,omitempty"`
-	RememberMe                                                *bool                     `json:"rememberMe,omitempty"`
-	RequiredActions                                           *[]interface{}            `json:"requiredActions,omitempty"`
-	ResetCredentialsFlow                                      *string                   `json:"resetCredentialsFlow,omitempty"`
-	ResetPasswordAllowed                                      *bool                     `json:"resetPasswordAllowed,omitempty"`
-	RevokeRefreshToken                                        *bool                     `json:"revokeRefreshToken,omitempty"`
-	Roles                                                     *RolesRepresentation      `json:"roles,omitempty"`
-	ScopeMappings                                             *[]interface{}            `json:"scopeMappings,omitempty"`
-	SMTPServer                                                *map[string]string        `json:"smtpServer,omitempty"`
-	SslRequired                                               *string                   `json:"sslRequired,omitempty"`
-	SsoSessionIdleTimeout                                     *int                      `json:"ssoSessionIdleTimeout,omitempty"`
-	SsoSessionIdleTimeoutRememberMe                           *int                      `json:"ssoSessionIdleTimeoutRememberMe,omitempty"`
-	SsoSessionMaxLifespan                                     *int                      `json:"ssoSessionMaxLifespan,omitempty"`
-	SsoSessionMaxLifespanRememberMe                           *int                      `json:"ssoSessionMaxLifespanRememberMe,omitempty"`
-	SupportedLocales                                          *[]string                 `json:"supportedLocales,omitempty"`
-	UserFederationMappers                                     *[]interface{}            `json:"userFederationMappers,omitempty"`
-	UserFederationProviders                                   *[]interface{}            `json:"userFederationProviders,omitempty"`
-	UserManagedAccessAllowed                                  *bool                     `json:"userManagedAccessAllowed,omitempty"`
-	Users                                                     *[]User                   `json:"users,omitempty"`
-	VerifyEmail                                               *bool                     `json:"verifyEmail,omitempty"`
-	WaitIncrementSeconds                                      *int                      `json:"waitIncrementSeconds,omitempty"`
-	WebAuthnPolicyAcceptableAaguids                           *[]string                 `json:"webAuthnPolicyAcceptableAaguids,omitempty"`
-	WebAuthnPolicyAttestationConveyancePreference             *string                   `json:"webAuthnPolicyAttestationConveyancePreference,omitempty"`
-	WebAuthnPolicyAuthenticatorAttachment                     *string                   `json:"webAuthnPolicyAuthenticatorAttachment,omitempty"`
-	WebAuthnPolicyAvoidSameAuthenticatorRegister              *bool                     `json:"webAuthnPolicyAvoidSameAuthenticatorRegister,omitempty"`
-	WebAuthnPolicyCreateTimeout                               *int                      `json:"webAuthnPolicyCreateTimeout,omitempty"`
-	WebAuthnPolicyPasswordlessAcceptableAaguids               *[]string                 `json:"webAuthnPolicyPasswordlessAcceptableAaguids,omitempty"`
-	WebAuthnPolicyPasswordlessAttestationConveyancePreference *string                   `json:"webAuthnPolicyPasswordlessAttestationConveyancePreference,omitempty"`
-	WebAuthnPolicyPasswordlessAuthenticatorAttachment         *string                   `json:"webAuthnPolicyPasswordlessAuthenticatorAttachment,omitempty"`
-	WebAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister  *bool                     `json:"webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister,omitempty"`
-	WebAuthnPolicyPasswordlessCreateTimeout                   *int                      `json:"webAuthnPolicyPasswordlessCreateTimeout,omitempty"`
-	WebAuthnPolicyPasswordlessRequireResidentKey              *string                   `json:"webAuthnPolicyPasswordlessRequireResidentKey,omitempty"`
-	WebAuthnPolicyPasswordlessRpEntityName                    *string                   `json:"webAuthnPolicyPasswordlessRpEntityName,omitempty"`
-	WebAuthnPolicyPasswordlessRpID                            *string                   `json:"webAuthnPolicyPasswordlessRpId,omitempty"`
-	WebAuthnPolicyPasswordlessSignatureAlgorithms             *[]string                 `json:"webAuthnPolicyPasswordlessSignatureAlgorithms,omitempty"`
-	WebAuthnPolicyPasswordlessUserVerificationRequirement     *string                   `json:"webAuthnPolicyPasswordlessUserVerificationRequirement,omitempty"`
-	WebAuthnPolicyRequireResidentKey                          *string                   `json:"webAuthnPolicyRequireResidentKey,omitempty"`
-	WebAuthnPolicyRpEntityName                                *string                   `json:"webAuthnPolicyRpEntityName,omitempty"`
-	WebAuthnPolicyRpID                                        *string                   `json:"webAuthnPolicyRpId,omitempty"`
-	WebAuthnPolicySignatureAlgorithms                         *[]string                 `json:"webAuthnPolicySignatureAlgorithms,omitempty"`
-	WebAuthnPolicyUserVerificationRequirement                 *string                   `json:"webAuthnPolicyUserVerificationRequirement,omitempty"`
+	AccessCodeLifespan                                        *int                              `json:"accessCodeLifespan,omitempty"`
+	AccessCodeLifespanLogin                                   *int                              `json:"accessCodeLifespanLogin,omitempty"`
+	AccessCodeLifespanUserAction                              *int                              `json:"accessCodeLifespanUserAction,omitempty"`
+	AccessTokenLifespan                                       *int                              `json:"accessTokenLifespan,omitempty"`
+	AccessTokenLifespanForImplicitFlow                        *int                              `json:"accessTokenLifespanForImplicitFlow,omitempty"`
+	AccountTheme                                              *string                           `json:"accountTheme,omitempty"`
+	ActionTokenGeneratedByAdminLifespan                       *int                              `json:"actionTokenGeneratedByAdminLifespan,omitempty"`
+	ActionTokenGeneratedByUserLifespan                        *int                              `json:"actionTokenGeneratedByUserLifespan,omitempty"`
+	AdminEventsDetailsEnabled                                 *bool                             `json:"adminEventsDetailsEnabled,omitempty"`
+	AdminEventsEnabled                                        *bool                             `json:"adminEventsEnabled,omitempty"`
+	AdminTheme                                                *string                           `json:"adminTheme,omitempty"`
+	Attributes                                                *map[string]string                `json:"attributes,omitempty"`
+	AuthenticationFlows                                       *[]interface{}                    `json:"authenticationFlows,omitempty"`
+	AuthenticatorConfig                                       *[]interface{}                    `json:"authenticatorConfig,omitempty"`
+	BruteForceProtected                                       *bool                             `json:"bruteForceProtected,omitempty"`
+	BruteForceStrategy                                        *string                           `json:"bruteForceStrategy,omitempty"`
+	BrowserFlow                                               *string                           `json:"browserFlow,omitempty"`
+	BrowserSecurityHeaders                                    *map[string]string                `json:"browserSecurityHeaders,omitempty"`
+	ClientOfflineSessionIdleTimeout                           *int                              `json:"clientOfflineSessionIdleTimeout,omitempty"`
+	ClientOfflineSessionMaxLifespan                           *int                              `json:"clientOfflineSessionMaxLifespan,omitempty"`
+	ClientAuthenticationFlow                                  *string                           `json:"clientAuthenticationFlow,omitempty"`
+	ClientPolicies                                            *map[string][]interface{}         `json:"clientPolicies,omitempty"`
+	ClientProfiles                                            *map[string][]interface{}         `json:"clientProfiles,omitempty"`
+	ClientScopeMappings                                       *map[string][]interface{}         `json:"clientScopeMappings,omitempty"`
+	ClientScopes                                              *[]ClientScope                    `json:"clientScopes,omitempty"`
+	ClientSessionIdleTimeout                                  *int                              `json:"clientSessionIdleTimeout,omitempty"`
+	ClientSessionMaxLifespan                                  *int                              `json:"clientSessionMaxLifespan,omitempty"`
+	Clients                                                   *[]Client                         `json:"clients,omitempty"`
+	Components                                                *map[string][]Component           `json:"components,omitempty"`
+	DefaultDefaultClientScopes                                *[]string                         `json:"defaultDefaultClientScopes,omitempty"`
+	DefaultGroups                                             *[]string                         `json:"defaultGroups,omitempty"`
+	DefaultLocale                                             *string                           `json:"defaultLocale,omitempty"`
+	DefaultOptionalClientScopes                               *[]string                         `json:"defaultOptionalClientScopes,omitempty"`
+	DefaultRole                                               *Role                             `json:"defaultRole,omitempty"`
+	DefaultRoles                                              *[]string                         `json:"defaultRoles,omitempty"`
+	DefaultSignatureAlgorithm                                 *string                           `json:"defaultSignatureAlgorithm,omitempty"`
+	DirectGrantFlow                                           *string                           `json:"directGrantFlow,omitempty"`
+	DisplayName                                               *string                           `json:"displayName,omitempty"`
+	DisplayNameHTML                                           *string                           `json:"displayNameHtml,omitempty"`
+	DuplicateEmailsAllowed                                    *bool                             `json:"duplicateEmailsAllowed,omitempty"`
+	EditUsernameAllowed                                       *bool                             `json:"editUsernameAllowed,omitempty"`
+	EmailTheme                                                *string                           `json:"emailTheme,omitempty"`
+	Enabled                                                   *bool                             `json:"enabled,omitempty"`
+	EnabledEventTypes                                         *[]string                         `json:"enabledEventTypes,omitempty"`
+	EventsEnabled                                             *bool                             `json:"eventsEnabled,omitempty"`
+	EventsListeners                                           *[]string                         `json:"eventsListeners,omitempty"`
+	FailureFactor                                             *int                              `json:"failureFactor,omitempty"`
+	FederatedUsers                                            *[]interface{}                    `json:"federatedUsers,omitempty"`
+	Groups                                                    *[]Group                          `json:"groups,omitempty"`
+	ID                                                        *string                           `json:"id,omitempty"`
+	IdentityProviderMappers                                   *[]IdentityProviderMapper         `json:"identityProviderMappers,omitempty"`
+	IdentityProviders                                         *[]IdentityProviderRepresentation `json:"identityProviders,omitempty"`
+	InternationalizationEnabled                               *bool                             `json:"internationalizationEnabled,omitempty"`
+	KeycloakVersion                                           *string                           `json:"keycloakVersion,omitempty"`
+	LoginTheme                                                *string                           `json:"loginTheme,omitempty"`
+	LocalizationTexts                                         *map[string]map[string]string     `json:"localizationTexts,omitempty"`
+	LoginWithEmailAllowed                                     *bool                             `json:"loginWithEmailAllowed,omitempty"`
+	MaxDeltaTimeSeconds                                       *int                              `json:"maxDeltaTimeSeconds,omitempty"`
+	MaxFailureWaitSeconds                                     *int                              `json:"maxFailureWaitSeconds,omitempty"`
+	MaxTemporaryLockouts                                      *int                              `json:"maxTemporaryLockouts,omitempty"`
+	MinimumQuickLoginWaitSeconds                              *int                              `json:"minimumQuickLoginWaitSeconds,omitempty"`
+	NotBefore                                                 *int                              `json:"notBefore,omitempty"`
+	OAuth2DeviceCodeLifespan                                  *int                              `json:"oauth2DeviceCodeLifespan,omitempty"`
+	OAuth2DevicePollingInterval                               *int                              `json:"oauth2DevicePollingInterval,omitempty"`
+	OfflineSessionIdleTimeout                                 *int                              `json:"offlineSessionIdleTimeout,omitempty"`
+	OfflineSessionMaxLifespan                                 *int                              `json:"offlineSessionMaxLifespan,omitempty"`
+	OfflineSessionMaxLifespanEnabled                          *bool                             `json:"offlineSessionMaxLifespanEnabled,omitempty"`
+	OrganizationsEnabled                                      *bool                             `json:"organizationsEnabled,omitempty"`
+	OTPPolicyAlgorithm                                        *string                           `json:"otpPolicyAlgorithm,omitempty"`
+	OTPPolicyCodeReusable                                     *bool                             `json:"otpPolicyCodeReusable,omitempty"`
+	OTPPolicyDigits                                           *int                              `json:"otpPolicyDigits,omitempty"`
+	OTPPolicyInitialCounter                                   *int                              `json:"otpPolicyInitialCounter,omitempty"`
+	OTPPolicyLookAheadWindow                                  *int                              `json:"otpPolicyLookAheadWindow,omitempty"`
+	OTPPolicyPeriod                                           *int                              `json:"otpPolicyPeriod,omitempty"`
+	OTPPolicyType                                             *string                           `json:"otpPolicyType,omitempty"`
+	OTPSupportedApplications                                  *[]string                         `json:"otpSupportedApplications,omitempty"`
+	PasswordPolicy                                            *string                           `json:"passwordPolicy,omitempty"`
+	PermanentLockout                                          *bool                             `json:"permanentLockout,omitempty"`
+	ProtocolMappers                                           *[]interface{}                    `json:"protocolMappers,omitempty"`
+	QuickLoginCheckMilliSeconds                               *int                              `json:"quickLoginCheckMilliSeconds,omitempty"`
+	Realm                                                     *string                           `json:"realm,omitempty"`
+	RefreshTokenMaxReuse                                      *int                              `json:"refreshTokenMaxReuse,omitempty"`
+	RegistrationAllowed                                       *bool                             `json:"registrationAllowed,omitempty"`
+	RegistrationEmailAsUsername                               *bool                             `json:"registrationEmailAsUsername,omitempty"`
+	RegistrationFlow                                          *string                           `json:"registrationFlow,omitempty"`
+	RememberMe                                                *bool                             `json:"rememberMe,omitempty"`
+	RequiredActions                                           *[]interface{}                    `json:"requiredActions,omitempty"`
+	ResetCredentialsFlow                                      *string                           `json:"resetCredentialsFlow,omitempty"`
+	RequiredCredentials                                       *[]string                         `json:"requiredCredentials,omitempty"`
+	ResetPasswordAllowed                                      *bool                             `json:"resetPasswordAllowed,omitempty"`
+	Roles                                                     *RolesRepresentation              `json:"roles,omitempty"`
+	SSOSessionIdleTimeout                                     *int                              `json:"ssoSessionIdleTimeout,omitempty"`
+	SSOSessionIdleTimeoutRememberMe                           *int                              `json:"ssoSessionIdleTimeoutRememberMe,omitempty"`
+	SSOSessionMaxLifespan                                     *int                              `json:"ssoSessionMaxLifespan,omitempty"`
+	SSOSessionMaxLifespanRememberMe                           *int                              `json:"ssoSessionMaxLifespanRememberMe,omitempty"`
+	SMTPServer                                                *map[string]string                `json:"smtpServer,omitempty"`
+	ScopeMappings                                             *[]interface{}                    `json:"scopeMappings,omitempty"`
+	SSLRequired                                               *string                           `json:"sslRequired,omitempty"`
+	SupportedLocales                                          *[]string                         `json:"supportedLocales,omitempty"`
+	UserFederationMappers                                     *[]interface{}                    `json:"userFederationMappers,omitempty"`
+	UserFederationProviders                                   *[]interface{}                    `json:"userFederationProviders,omitempty"`
+	UserManagedAccessAllowed                                  *bool                             `json:"userManagedAccessAllowed,omitempty"`
+	Users                                                     *[]User                           `json:"users,omitempty"`
+	VerifyEmail                                               *bool                             `json:"verifyEmail,omitempty"`
+	WebAuthnPolicyAcceptableAaguids                           *[]string                         `json:"webAuthnPolicyAcceptableAaguids,omitempty"`
+	WebAuthnPolicyAttestationConveyancePreference             *string                           `json:"webAuthnPolicyAttestationConveyancePreference,omitempty"`
+	WebAuthnPolicyAuthenticatorAttachment                     *string                           `json:"webAuthnPolicyAuthenticatorAttachment,omitempty"`
+	WebAuthnPolicyAvoidSameAuthenticatorRegister              *bool                             `json:"webAuthnPolicyAvoidSameAuthenticatorRegister,omitempty"`
+	WebAuthnPolicyCreateTimeout                               *int                              `json:"webAuthnPolicyCreateTimeout,omitempty"`
+	WebAuthnPolicyExtraOrigins                                *[]string                         `json:"webAuthnPolicyExtraOrigins,omitempty"`
+	WebAuthnPolicyRequireResidentKey                          *string                           `json:"webAuthnPolicyRequireResidentKey,omitempty"`
+	WebAuthnPolicyRpEntityName                                *string                           `json:"webAuthnPolicyRpEntityName,omitempty"`
+	WebAuthnPolicyRpId                                        *string                           `json:"webAuthnPolicyRpId,omitempty"`
+	WebAuthnPolicySignatureAlgorithms                         *[]string                         `json:"webAuthnPolicySignatureAlgorithms,omitempty"`
+	WebAuthnPolicyUserVerificationRequirement                 *string                           `json:"webAuthnPolicyUserVerificationRequirement,omitempty"`
+	WebAuthnPolicyPasswordlessAcceptableAaguids               *[]string                         `json:"webAuthnPolicyPasswordlessAcceptableAaguids,omitempty"`
+	WebAuthnPolicyPasswordlessAttestationConveyancePreference *string                           `json:"webAuthnPolicyPasswordlessAttestationConveyancePreference,omitempty"`
+	WebAuthnPolicyPasswordlessAuthenticatorAttachment         *string                           `json:"webAuthnPolicyPasswordlessAuthenticatorAttachment,omitempty"`
+	WebAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister  *bool                             `json:"webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister,omitempty"`
+	WebAuthnPolicyPasswordlessCreateTimeout                   *int                              `json:"webAuthnPolicyPasswordlessCreateTimeout,omitempty"`
+	WebAuthnPolicyPasswordlessExtraOrigins                    *[]string                         `json:"webAuthnPolicyPasswordlessExtraOrigins,omitempty"`
+	WebAuthnPolicyPasswordlessRequireResidentKey              *string                           `json:"webAuthnPolicyPasswordlessRequireResidentKey,omitempty"`
+	WebAuthnPolicyPasswordlessRpEntityName                    *string                           `json:"webAuthnPolicyPasswordlessRpEntityName,omitempty"`
+	WebAuthnPolicyPasswordlessRpID                            *string                           `json:"webAuthnPolicyPasswordlessRpId,omitempty"`
+	WebAuthnPolicyPasswordlessSignatureAlgorithms             *[]string                         `json:"webAuthnPolicyPasswordlessSignatureAlgorithms,omitempty"`
+	WebAuthnPolicyPasswordlessUserVerificationRequirement     *string                           `json:"webAuthnPolicyPasswordlessUserVerificationRequirement,omitempty"`
+	WaitIncrementSeconds                                      *int                              `json:"waitIncrementSeconds,omitempty"`
 }
 
 // AuthenticationFlowRepresentation represents an authentication flow of a realm
@@ -1484,6 +1497,74 @@ type GetClientUserSessionsParams struct {
 	Max   *int `json:"max,string,omitempty"`
 }
 
+// OrganizationInviteUserParams represents the parameters for inviting a new user to an organization
+type OrganizationInviteUserParams struct {
+	Email     *string `json:"email,omitempty"`
+	FirstName *string `json:"firstName,omitempty"`
+	LastName  *string `json:"lastName,omitempty"`
+}
+
+// FormData returns form data for a given OrganizationInviteUserParams
+func (p *OrganizationInviteUserParams) FormData() map[string]string {
+	m, _ := json.Marshal(p)
+	var res map[string]string
+	_ = json.Unmarshal(m, &res)
+	return res
+}
+
+// GetMembersParams represents the optional parameters for getting members of an organization
+type GetMembersParams struct {
+	Exact          *bool           `json:"exact,string,omitempty"`
+	First          *int            `json:"first,string,omitempty"`
+	Max            *int            `json:"max,string,omitempty"`
+	MembershipType *MembershipType `json:"membershipetype,omitempty"`
+	Search         *string         `json:"search,omitempty"`
+}
+
+// MembershipType represent the membership type of an organization member.
+// v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#MembershipType
+type MembershipType struct{}
+
+// MemberRepresentation represents a member of an organization
+// v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#MemberRepresentation
+type MemberRepresentation struct {
+	User
+	// Type not defined in the Keycloak doc so I left it unexported. Help if you have more information
+	MembershipType *MembershipType `json:"membershipetype,omitempty"`
+}
+
+// GetOrganizationsParams represents the optional parameters for getting organizations
+type GetOrganizationsParams struct {
+	BriefRepresentation *bool   `json:"briefRepresentation,string,omitempty"`
+	Exact               *bool   `json:"exact,string,omitempty"`
+	First               *int    `json:"first,string,omitempty"`
+	Max                 *int    `json:"max,string,omitempty"`
+	Q                   *string `json:"q,omitempty"`
+	Search              *string `json:"search,omitempty"`
+}
+
+// OrganizationDomainRepresentation is a representation of an organization's domain
+// v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#OrganizationDomainRepresentation
+type OrganizationDomainRepresentation struct {
+	Name     *string `json:"name,omitempty"`
+	Verified *bool   `json:"verified,omitempty"`
+}
+
+// OrganizationRepresentation is a representation of an organization
+// v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#OrganizationRepresentation
+type OrganizationRepresentation struct {
+	ID                *string                             `json:"id,omitempty"`
+	Name              *string                             `json:"name,omitempty"`
+	Alias             *string                             `json:"alias,omitempty"`
+	Enabled           *bool                               `json:"enabled,omitempty"`
+	Description       *string                             `json:"description,omitempty"`
+	RedirectURL       *string                             `json:"redirectUrl,omitempty"`
+	Attributes        *map[string][]string                `json:"attributes,omitempty"`
+	Domains           *[]OrganizationDomainRepresentation `json:"domains,omitempty"`
+	Members           *[]MemberRepresentation             `json:"members,omitempty"`
+	IdentityProviders *[]IdentityProviderRepresentation   `json:"identityProviders,omitempty"`
+}
+
 // prettyStringStruct returns struct formatted into pretty string
 func prettyStringStruct(t interface{}) string {
 	json, err := json.MarshalIndent(t, "", "\t")
@@ -1578,3 +1659,10 @@ func (v *CredentialRepresentation) String() string                  { return pre
 func (v *RequiredActionProviderRepresentation) String() string      { return prettyStringStruct(v) }
 func (v *BruteForceStatus) String() string                          { return prettyStringStruct(v) }
 func (v *GetClientUserSessionsParams) String() string               { return prettyStringStruct(v) }
+func (v *GetOrganizationsParams) String() string                    { return prettyStringStruct(v) }
+func (v *OrganizationInviteUserParams) String() string              { return prettyStringStruct(v) }
+func (v *GetMembersParams) String() string                          { return prettyStringStruct(v) }
+func (v *MembershipType) String() string                            { return prettyStringStruct(v) }
+func (v *MemberRepresentation) String() string                      { return prettyStringStruct(v) }
+func (v *OrganizationDomainRepresentation) String() string          { return prettyStringStruct(v) }
+func (v *OrganizationRepresentation) String() string                { return prettyStringStruct(v) }
