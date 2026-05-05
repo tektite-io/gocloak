@@ -17,3 +17,8 @@
 *.out
 
 \.idea/
+
+.claude
+CLAUDE.md
+recommendations.md
+maintenance-plan.md
