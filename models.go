@@ -1548,25 +1548,38 @@ func (v *OrganizationInviteUserParams) FormData() map[string]string {
 	return res
 }
 
-// GetMembersParams represents the optional parameters for getting members of an organization
-type GetMembersParams struct {
-	Exact          *bool           `json:"exact,string,omitempty"`
-	First          *int            `json:"first,string,omitempty"`
-	Max            *int            `json:"max,string,omitempty"`
-	MembershipType *MembershipType `json:"membershipetype,omitempty"`
-	Search         *string         `json:"search,omitempty"`
-}
-
 // MembershipType represent the membership type of an organization member.
 // v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#MembershipType
-type MembershipType struct{}
+type MembershipType string
+
+const (
+	// MembershipTypeManaged indicates the member cannot exist without the organization.
+	MembershipTypeManaged MembershipType = "MANAGED"
+	// MembershipTypeUnmanaged indicates the member can exist without the organization.
+	MembershipTypeUnmanaged MembershipType = "UNMANAGED"
+)
 
 // MemberRepresentation represents a member of an organization
 // v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#MemberRepresentation
 type MemberRepresentation struct {
 	User
-	// Type not defined in the Keycloak doc so I left it unexported. Help if you have more information
-	MembershipType *MembershipType `json:"membershipetype,omitempty"`
+	MembershipType *MembershipType `json:"membershipType,omitempty"`
+}
+
+// GetMembersParams represents the optional parameters for getting members of an organization
+type GetMembersParams struct {
+	Exact          *bool           `json:"exact,string,omitempty"`
+	First          *int            `json:"first,string,omitempty"`
+	Max            *int            `json:"max,string,omitempty"`
+	MembershipType *MembershipType `json:"membershipType,omitempty"`
+	Search         *string         `json:"search,omitempty"`
+}
+
+// GetOrganizationMembersParams represents the optional parameters for getting members of an organization group
+type GetOrganizationMembersParams struct {
+	BriefRepresentation *bool `json:"briefRepresentation,string,omitempty"`
+	First               *int  `json:"first,string,omitempty"`
+	Max                 *int  `json:"max,string,omitempty"`
 }
 
 // GetOrganizationsParams represents the optional parameters for getting organizations
@@ -1579,6 +1592,45 @@ type GetOrganizationsParams struct {
 	Search              *string `json:"search,omitempty"`
 }
 
+// GetOrganizationCountParams represents the optional parameters for counting organizations
+type GetOrganizationCountParams struct {
+	Exact  *bool   `json:"exact,string,omitempty"`
+	Q      *string `json:"q,omitempty"`
+	Search *string `json:"search,omitempty"`
+}
+
+// GetOrganizationInvitationsParams represents the optional parameters for getting organization invitations
+type GetOrganizationInvitationsParams struct {
+	Email     *string `json:"email,omitempty"`
+	First     *int    `json:"first,string,omitempty"`
+	FirstName *string `json:"firstName,omitempty"`
+	LastName  *string `json:"lastName,omitempty"`
+	Max       *int    `json:"max,string,omitempty"`
+	Search    *string `json:"search,omitempty"`
+	Status    *string `json:"status,omitempty"`
+}
+
+// GetOrganizationGroupsParams represents the optional parameters for getting organization groups
+type GetOrganizationGroupsParams struct {
+	BriefRepresentation *bool   `json:"briefRepresentation,string,omitempty"`
+	Exact               *bool   `json:"exact,string,omitempty"`
+	First               *int    `json:"first,string,omitempty"`
+	Max                 *int    `json:"max,string,omitempty"`
+	PopulateHierarchy   *bool   `json:"populateHierarchy,string,omitempty"`
+	Q                   *string `json:"q,omitempty"`
+	Search              *string `json:"search,omitempty"`
+	SubGroupsCount      *bool   `json:"subGroupsCount,string,omitempty"`
+}
+
+// GetOrganizationGroupSubgroupsParams represents the optional parameters for getting subgroups of an organization group
+type GetOrganizationGroupSubgroupsParams struct {
+	Exact          *bool   `json:"exact,string,omitempty"`
+	First          *int    `json:"first,string,omitempty"`
+	Max            *int    `json:"max,string,omitempty"`
+	Search         *string `json:"search,omitempty"`
+	SubGroupsCount *bool   `json:"subGroupsCount,string,omitempty"`
+}
+
 // OrganizationDomainRepresentation is a representation of an organization's domain
 // v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#OrganizationDomainRepresentation
 type OrganizationDomainRepresentation struct {
@@ -1589,9 +1641,9 @@ type OrganizationDomainRepresentation struct {
 // OrganizationRepresentation is a representation of an organization
 // v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#OrganizationRepresentation
 type OrganizationRepresentation struct {
-	ID   *string `json:"id,omitempty"`
-	Name *string `json:"name,omitempty"`
-	// Alias             *string                             `json:"alias,omitempty"`
+	ID                *string                             `json:"id,omitempty"`
+	Name              *string                             `json:"name,omitempty"`
+	Alias             *string                             `json:"alias,omitempty"`
 	Enabled           *bool                               `json:"enabled,omitempty"`
 	Description       *string                             `json:"description,omitempty"`
 	RedirectURL       *string                             `json:"redirectUrl,omitempty"`
@@ -1599,6 +1651,31 @@ type OrganizationRepresentation struct {
 	Domains           *[]OrganizationDomainRepresentation `json:"domains,omitempty"`
 	Members           *[]MemberRepresentation             `json:"members,omitempty"`
 	IdentityProviders *[]IdentityProviderRepresentation   `json:"identityProviders,omitempty"`
+	Groups            *[]Group                            `json:"groups,omitempty"`
+}
+
+// InvitationStatus represents the status of an organization invitation
+type InvitationStatus string
+
+const (
+	// InvitationStatusPending indicates the invitation has not yet been accepted
+	InvitationStatusPending InvitationStatus = "PENDING"
+	// InvitationStatusExpired indicates the invitation has expired
+	InvitationStatusExpired InvitationStatus = "EXPIRED"
+)
+
+// OrganizationInvitationRepresentation represents an invitation to join an organization
+// v26: https://www.keycloak.org/docs-api/latest/rest-api/index.html#OrganizationInvitationRepresentation
+type OrganizationInvitationRepresentation struct {
+	ID             *string           `json:"id,omitempty"`
+	OrganizationID *string           `json:"organizationId,omitempty"`
+	Email          *string           `json:"email,omitempty"`
+	FirstName      *string           `json:"firstName,omitempty"`
+	LastName       *string           `json:"lastName,omitempty"`
+	SentDate       *int64            `json:"sentDate,omitempty"`
+	ExpiresAt      *int64            `json:"expiresAt,omitempty"`
+	Status         *InvitationStatus `json:"status,omitempty"`
+	InviteLink     *string           `json:"inviteLink,omitempty"`
 }
 
 // prettyStringStruct returns struct formatted into pretty string
@@ -1702,3 +1779,9 @@ func (v *MembershipType) String() string                            { return pre
 func (v *MemberRepresentation) String() string                      { return prettyStringStruct(v) }
 func (v *OrganizationDomainRepresentation) String() string          { return prettyStringStruct(v) }
 func (v *OrganizationRepresentation) String() string                { return prettyStringStruct(v) }
+func (v *GetOrganizationMembersParams) String() string              { return prettyStringStruct(v) }
+func (v *GetOrganizationCountParams) String() string                { return prettyStringStruct(v) }
+func (v *GetOrganizationInvitationsParams) String() string          { return prettyStringStruct(v) }
+func (v *GetOrganizationGroupsParams) String() string               { return prettyStringStruct(v) }
+func (v *GetOrganizationGroupSubgroupsParams) String() string       { return prettyStringStruct(v) }
+func (v *OrganizationInvitationRepresentation) String() string      { return prettyStringStruct(v) }

@@ -608,10 +608,51 @@ type GoCloakIface interface {
 	// Otherwise,an error response with status NOT_FOUND is returned
 	GetOrganizationMemberByID(ctx context.Context, token, realm, idOfOrganization, idOfUser string) (*MemberRepresentation, error)
 	// GetMemberAssociatedOrganizations returns the organizations associated with the user that has the specified id
-	GetMemberAssociatedOrganizations(ctx context.Context, token, realm, idOfUser string) ([]*OrganizationRepresentation, error)
+	GetMemberAssociatedOrganizations(ctx context.Context, token, realm, idOfUser string, briefRepresentation bool) ([]*OrganizationRepresentation, error)
+	// GetOrganizationMemberOrganizations returns organizations for a given user in a given organization
+	GetOrganizationMemberOrganizations(ctx context.Context, accessToken, realm, idOfOrganization, idOfUser string) ([]*OrganizationRepresentation, error)
 	// RemoveUserFromOrganization removes the user with the specified id from the organization
 	RemoveUserFromOrganization(ctx context.Context, token, realm, idOfOrganization, idOfUser string) error
-	// AddIdentityProviderToOrganization adds the identity provider with the specified id to the organization
-	// POST /admin/realms/{realm}/organizations/{id}/identity-providers
+	// AddIdentityProviderToOrganization adds the identity provider with the specified alias to the organization
 	AddIdentityProviderToOrganization(ctx context.Context, token, realm string, idOfOrganization, identityProviderAlias string) error
+	// GetOrganizationIdentityProviders returns all identity providers associated with the organization
+	GetOrganizationIdentityProviders(ctx context.Context, token, realm, idOfOrganization string) ([]*IdentityProviderRepresentation, error)
+	// GetOrganizationIdentityProvider returns the identity provider with the specified alias associated with the organization
+	GetOrganizationIdentityProvider(ctx context.Context, token, realm, idOfOrganization, alias string) (*IdentityProviderRepresentation, error)
+	// RemoveIdentityProviderFromOrganization removes the identity provider with the specified alias from the organization
+	RemoveIdentityProviderFromOrganization(ctx context.Context, token, realm, idOfOrganization, alias string) error
+	// GetOrganizationCount returns the number of organizations in the realm
+	GetOrganizationCount(ctx context.Context, token, realm string, params GetOrganizationCountParams) (int64, error)
+	// GetOrganizationMemberGroups returns the groups the member belongs to within the organization
+	GetOrganizationMemberGroups(ctx context.Context, token, realm, idOfOrganization, idOfUser string, briefRepresentation bool) ([]*Group, error)
+	// GetOrganizationInvitations returns pending invitations for the organization
+	GetOrganizationInvitations(ctx context.Context, token, realm, idOfOrganization string, params GetOrganizationInvitationsParams) ([]*OrganizationInvitationRepresentation, error)
+	// GetOrganizationInvitationByID returns the invitation with the specified id
+	GetOrganizationInvitationByID(ctx context.Context, token, realm, idOfOrganization, idOfInvitation string) (*OrganizationInvitationRepresentation, error)
+	// DeleteOrganizationInvitation removes the invitation with the specified id from the organization
+	DeleteOrganizationInvitation(ctx context.Context, token, realm, idOfOrganization, idOfInvitation string) error
+	// ResendOrganizationInvitation resends the invitation with the specified id
+	ResendOrganizationInvitation(ctx context.Context, token, realm, idOfOrganization, idOfInvitation string) error
+	// AddOrganizationGroup creates a new top-level group in the organization
+	AddOrganizationGroup(ctx context.Context, token, realm, idOfOrganization string, group Group) (string, error)
+	// GetOrganizationGroups returns the groups associated with the organization
+	GetOrganizationGroups(ctx context.Context, token, realm, idOfOrganization string, params GetOrganizationGroupsParams) ([]*Group, error)
+	// GetOrganizationGroupByPath returns the organization group matching the given path
+	GetOrganizationGroupByPath(ctx context.Context, token, realm, idOfOrganization, groupPath string, subGroupsCount bool) (*Group, error)
+	// GetOrganizationGroupByID returns the organization group with the specified id
+	GetOrganizationGroupByID(ctx context.Context, token, realm, idOfOrganization, idOfGroup string) (*Group, error)
+	// UpdateOrganizationGroup updates the organization group with the specified id
+	UpdateOrganizationGroup(ctx context.Context, token, realm, idOfOrganization string, group Group) error
+	// DeleteOrganizationGroup removes the organization group with the specified id
+	DeleteOrganizationGroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup string) error
+	// GetOrganizationGroupSubgroups returns the subgroups of the specified organization group
+	GetOrganizationGroupSubgroups(ctx context.Context, token, realm, idOfOrganization, idOfGroup string, params GetOrganizationGroupSubgroupsParams) ([]*Group, error)
+	// AddOrganizationSubgroup adds a subgroup to the specified organization group
+	AddOrganizationSubgroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup string, group Group) (string, error)
+	// GetOrganizationGroupMembers returns the members of the specified organization group
+	GetOrganizationGroupMembers(ctx context.Context, token, realm, idOfOrganization, idOfGroup string, params GetOrganizationMembersParams) ([]*MemberRepresentation, error)
+	// AddMemberToOrganizationGroup adds the user with the specified id to the organization group
+	AddMemberToOrganizationGroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup, idOfUser string) error
+	// RemoveMemberFromOrganizationGroup removes the user with the specified id from the organization group
+	RemoveMemberFromOrganizationGroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup, idOfUser string) error
 }
