@@ -28,13 +28,13 @@ For release notes please consult the specific releases [here](https://github.com
 ### Installation
 
 ```shell
-go get github.com/Nerzal/gocloak/v13
+go get github.com/Nerzal/gocloak/v14
 ```
 
 ### Importing
 
 ```go
- import "github.com/Nerzal/gocloak/v13"
+ import "github.com/Nerzal/gocloak/v14"
 ```
 
 ### Create New User

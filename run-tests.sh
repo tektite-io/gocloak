@@ -21,6 +21,6 @@ if [ $# -gt 0 ]; then
     ARGS+=("^($@)$")
 fi
 
-go test -failfast -race -cover -coverprofile=coverage.out -covermode=atomic -p 10 -cpu 1,2 -bench . -benchmem ${ARGS[@]}
+go test -race -cover -coverprofile=coverage.out -covermode=atomic -p 10 -cpu 1,2 -bench . -benchmem ${ARGS[@]}
 
 docker compose down
