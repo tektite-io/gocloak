@@ -4805,8 +4805,6 @@ func Test_CreateDeleteClientScopeWithMappers(t *testing.T) {
 	token := GetAdminToken(t, client)
 
 	id := GetRandomName("client-scope-id-")
-	rolemapperID := GetRandomName("client-rolemapper-id-")
-	audiencemapperID := GetRandomName("client-audiencemapper-id-")
 
 	createdID, err := client.CreateClientScope(
 		context.Background(),
@@ -4824,7 +4822,6 @@ func Test_CreateDeleteClientScopeWithMappers(t *testing.T) {
 			},
 			ProtocolMappers: []gocloak.ProtocolMappers{
 				{
-					ID:              &rolemapperID,
 					Name:            gocloak.StringP("roles"),
 					Protocol:        gocloak.StringP("openid-connect"),
 					ProtocolMapper:  gocloak.StringP("oidc-usermodel-client-role-mapper"),
@@ -4840,7 +4837,6 @@ func Test_CreateDeleteClientScopeWithMappers(t *testing.T) {
 					},
 				},
 				{
-					ID:              &audiencemapperID,
 					Name:            gocloak.StringP("audience"),
 					Protocol:        gocloak.StringP("openid-connect"),
 					ProtocolMapper:  gocloak.StringP("oidc-audience-mapper"),
