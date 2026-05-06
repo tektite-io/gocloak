@@ -1236,7 +1236,7 @@ func Test_GroupPermissions(t *testing.T) {
 	require.Equal(t, 1, len(clients))
 	realManagementClient := clients[0]
 
-	_, policyID := CreatePolicy(t, client, gocloakClientID, gocloak.PolicyRepresentation{
+	_, policyID := CreatePolicy(t, client, *realManagementClient.ID, gocloak.PolicyRepresentation{
 		Name:        GetRandomNameP("PolicyName"),
 		Description: gocloak.StringP("Policy Description"),
 		Type:        gocloak.StringP("client"),

@@ -1,7 +1,7 @@
 services:
   keycloak:
     build: .
-    command: start-dev --import-realm --features=preview,organization
+    command: start-dev --import-realm --features=preview,organization,admin-fine-grained-authz:v1
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: secret
