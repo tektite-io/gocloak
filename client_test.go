@@ -3241,6 +3241,11 @@ func Test_GetUserBruteForceDetectionStatus(t *testing.T) {
 		cfg.GoCloak.Realm)
 	require.NoError(t, err, "GetRealm failed")
 
+	defer func() {
+		err := client.UpdateRealm(context.Background(), token.AccessToken, *realm)
+		require.NoError(t, err, "restoring realm failed")
+	}()
+
 	updatedRealm := realm
 	updatedRealm.BruteForceProtected = gocloak.BoolP(true)
 	updatedRealm.FailureFactor = gocloak.IntP(1)
@@ -3310,13 +3315,6 @@ func Test_GetUserBruteForceDetectionStatus(t *testing.T) {
 			bruteForceStatus.NumFailures != nil && *bruteForceStatus.NumFailures == 0 &&
 			bruteForceStatus.Disabled != nil && !*bruteForceStatus.Disabled
 	}, 5*time.Second, 100*time.Millisecond, "brute force status should clear after successful login")
-
-	err = client.UpdateRealm(
-		context.Background(),
-		token.AccessToken,
-		*realm)
-	require.NoError(t, err, "UpdateRealm failed")
-
 }
 
 func Test_CreateUserCustomAttributes(t *testing.T) {
