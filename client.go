@@ -149,7 +149,7 @@ func (g *GoCloak) GetRequestWithBasicAuth(ctx context.Context, clientID, clientS
 func (g *GoCloak) getRequestingParty(ctx context.Context, token string, realm string, options RequestingPartyTokenOptions, res any) (*resty.Response, error) {
 	return g.GetRequestWithBearerAuth(ctx, token).
 		SetFormData(options.FormData()).
-		SetFormDataFromValues(url.Values{"permission": PStringSlice(options.Permissions)}).
+		SetFormDataFromValues(url.Values{"permission": options.Permissions}).
 		SetResult(&res).
 		Post(g.getRealmURL(realm, g.Config.tokenEndpoint))
 }
@@ -480,10 +480,10 @@ func (g *GoCloak) decodeAccessTokenWithClaims(ctx context.Context, accessToken, 
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
-	if certResult.Keys == nil {
+	if len(certResult.Keys) == 0 {
 		return nil, fmt.Errorf("%s: there is no keys to decode the token", errMessage)
 	}
-	usedKey := findUsedKey(decodedHeader.Kid, *certResult.Keys)
+	usedKey := findUsedKey(decodedHeader.Kid, certResult.Keys)
 	if usedKey == nil {
 		return nil, fmt.Errorf("%s: cannot find a key to decode the token", errMessage)
 	}
@@ -3957,9 +3957,11 @@ func checkPermissionGrantParams(permission PermissionGrantParams) error {
 	if NilOrEmpty(permission.RequesterID) {
 		return errors.New("requesterID required to grant user permission")
 	}
+
 	if NilOrEmpty(permission.ResourceID) {
 		return errors.New("resourceID required to grant user permission")
 	}
+
 	if NilOrEmpty(permission.ScopeName) {
 		return errors.New("scopeName required to grant user permission")
 	}

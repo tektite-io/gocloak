@@ -129,9 +129,9 @@ func TestPFloat64(t *testing.T) {
 	assert.IsType(t, float64(0), v)
 }
 func TestNilOrEmptyArray(t *testing.T) {
-	a := gocloak.NilOrEmptyArray(&[]string{"c", "d"})
-	b := gocloak.NilOrEmptyArray(&[]string{"", "b"})
-	c := gocloak.NilOrEmptyArray(&[]string{})
+	a := gocloak.NilOrEmptyArray([]string{"c", "d"})
+	b := gocloak.NilOrEmptyArray([]string{"", "b"})
+	c := gocloak.NilOrEmptyArray([]string{})
 	assert.False(t, a)
 	assert.True(t, b)
 	assert.True(t, c)

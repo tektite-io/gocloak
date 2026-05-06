@@ -10,6 +10,11 @@ type contextKey string
 
 var tracerContextKey = contextKey("tracer")
 
+// Ptr returns a pointer to the given value of any type.
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 // StringP returns a pointer of a string variable
 func StringP(value string) *string {
 	return &value
@@ -101,48 +106,30 @@ func PFloat64(value *float64) float64 {
 	return *value
 }
 
-// NilOrEmpty returns true if string is empty or has a nil value
+// NilOrEmpty returns true if string pointer is nil or the string is empty.
 func NilOrEmpty(value *string) bool {
 	return value == nil || len(*value) == 0
 }
 
-// NilOrEmptyArray returns true if string is empty or has a nil value
-func NilOrEmptyArray(value *[]string) bool {
-
-	if value == nil || len(*value) == 0 {
+// NilOrEmptyArray returns true if the slice is empty or its first element is an empty string.
+func NilOrEmptyArray(value []string) bool {
+	if len(value) == 0 {
 		return true
 	}
-
-	return (*value)[0] == ""
-
+	return value[0] == ""
 }
 
-// DecisionStrategyP returns a pointer for a DecisionStrategy value
-func DecisionStrategyP(value DecisionStrategy) *DecisionStrategy {
-	return &value
-}
-
-// LogicP returns a pointer for a Logic value
-func LogicP(value Logic) *Logic {
-	return &value
-}
-
-// PolicyEnforcementModeP returns a pointer for a PolicyEnforcementMode value
-func PolicyEnforcementModeP(value PolicyEnforcementMode) *PolicyEnforcementMode {
-	return &value
-}
-
-// PStringSlice converts a pointer to []string or returns ampty slice if nill value
-func PStringSlice(value *[]string) []string {
+// PStringSlice returns the slice as-is, or an empty slice if nil.
+func PStringSlice(value []string) []string {
 	if value == nil {
 		return []string{}
 	}
-	return *value
+	return value
 }
 
-// NilOrEmptySlice returns true if list is empty or has a nil value
-func NilOrEmptySlice(value *[]string) bool {
-	return value == nil || len(*value) == 0
+// NilOrEmptySlice returns true if the slice is nil or empty.
+func NilOrEmptySlice(value []string) bool {
+	return len(value) == 0
 }
 
 // WithTracer generates a context that has a tracer attached

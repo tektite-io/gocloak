@@ -56,6 +56,8 @@ type GoCloakIface interface {
 	RefreshToken(ctx context.Context, refreshToken, clientID, clientSecret, realm string) (*JWT, error)
 	// LoginAdmin performs a login with Admin client
 	LoginAdmin(ctx context.Context, username, password, realm string) (*JWT, error)
+	// LoginAdminOtp performs a login with Admin client and OTP token
+	LoginAdminOtp(ctx context.Context, username, password, totp, realm string) (*JWT, error)
 	// LoginClient performs a login with client credentials
 	LoginClient(ctx context.Context, clientID, clientSecret, realm string, scopes ...string) (*JWT, error)
 	// LoginClientTokenExchange will exchange the presented token for a user's token
@@ -90,7 +92,7 @@ type GoCloakIface interface {
 	CreateChildGroup(ctx context.Context, token, realm, groupID string, group Group) (string, error)
 	// CreateComponent creates the given component.
 	CreateComponent(ctx context.Context, token, realm string, component Component) (string, error)
-	// CreateClient creates the given g.
+	// CreateClient creates the given client.
 	CreateClient(ctx context.Context, accessToken, realm string, newClient Client) (string, error)
 	// CreateClientRepresentation creates a new client representation
 	CreateClientRepresentation(ctx context.Context, token, realm string, newClient Client) (*Client, error)
@@ -104,7 +106,7 @@ type GoCloakIface interface {
 	UpdateGroup(ctx context.Context, token, realm string, updatedGroup Group) error
 	// UpdateGroupManagementPermissions updates the given group management permissions
 	UpdateGroupManagementPermissions(ctx context.Context, accessToken, realm string, idOfGroup string, managementPermissions ManagementPermissionRepresentation) (*ManagementPermissionRepresentation, error)
-	// UpdateClient updates the given Client
+	// UpdateClient updates the given client
 	UpdateClient(ctx context.Context, token, realm string, updatedClient Client) error
 	// UpdateClientRepresentation updates the given client representation
 	UpdateClientRepresentation(ctx context.Context, accessToken, realm string, updatedClient Client) (*Client, error)
@@ -540,6 +542,8 @@ type GoCloakIface interface {
 	MoveCredentialToFirst(ctx context.Context, token, realm, userID, credentialID string) error
 	// GetEvents returns events
 	GetEvents(ctx context.Context, token string, realm string, params GetEventsParams) ([]*EventRepresentation, error)
+	// GetAdminEvents returns admin events
+	GetAdminEvents(ctx context.Context, token string, realm string, params GetAdminEventsParams) ([]*AdminEventRepresentation, error)
 	// GetClientScopesScopeMappingsRealmRolesAvailable returns realm-level roles that are available to attach to this client scope
 	GetClientScopesScopeMappingsRealmRolesAvailable(ctx context.Context, token, realm, clientScopeID string) ([]*Role, error)
 	// GetClientScopesScopeMappingsRealmRoles returns roles associated with a client-scope
@@ -586,7 +590,7 @@ type GoCloakIface interface {
 	GetOrganizationByID(ctx context.Context, token, realm, idOfOrganization string) (*OrganizationRepresentation, error)
 	// UpdateOrganization updates the given organization
 	UpdateOrganization(ctx context.Context, token, realm string, organization OrganizationRepresentation) error
-	// DeleteOrganization deletes the organization
+	// DeleteOrganization deletes a given organization
 	DeleteOrganization(ctx context.Context, token, realm, idOfOrganization string) error
 	// InviteUserToOrganization invites an existing user or sends a registration link to a new user, based on the provided e-mail address.
 	// If the user with the given e-mail address exists, it sends an invitation link, otherwise it sends a registration link.
@@ -594,7 +598,7 @@ type GoCloakIface interface {
 	InviteUserToOrganization(ctx context.Context, token, realm string, idOfOrganization string, user OrganizationInviteUserParams) error
 	// InviteUserToOrganizationByID invites an existing user to the organization, using the specified user id
 	// An invitation email will be sent to the user so SMTP settings are required in keycloak
-	InviteUserToOrganizationByID(ctx context.Context, token, realm, idOfOrganization, userID string) error
+	InviteUserToOrganizationByID(ctx context.Context, token, realm, idOfOrganization, idOfUser string) error
 	// AddUserToOrganization adds the user with the specified id as a member of the organization
 	// Adds, or associates, an existing user with the organization. If no user is found, or if it is already associated with the organization, an error response is returned
 	// No invitation email is sent to the user
@@ -614,45 +618,66 @@ type GoCloakIface interface {
 	// RemoveUserFromOrganization removes the user with the specified id from the organization
 	RemoveUserFromOrganization(ctx context.Context, token, realm, idOfOrganization, idOfUser string) error
 	// AddIdentityProviderToOrganization adds the identity provider with the specified alias to the organization
+	// POST /admin/realms/{realm}/organizations/{id}/identity-providers
 	AddIdentityProviderToOrganization(ctx context.Context, token, realm string, idOfOrganization, identityProviderAlias string) error
 	// GetOrganizationIdentityProviders returns all identity providers associated with the organization
+	// GET /admin/realms/{realm}/organizations/{id}/identity-providers
 	GetOrganizationIdentityProviders(ctx context.Context, token, realm, idOfOrganization string) ([]*IdentityProviderRepresentation, error)
 	// GetOrganizationIdentityProvider returns the identity provider with the specified alias associated with the organization
+	// GET /admin/realms/{realm}/organizations/{id}/identity-providers/{alias}
 	GetOrganizationIdentityProvider(ctx context.Context, token, realm, idOfOrganization, alias string) (*IdentityProviderRepresentation, error)
 	// RemoveIdentityProviderFromOrganization removes the identity provider with the specified alias from the organization
+	// DELETE /admin/realms/{realm}/organizations/{id}/identity-providers/{alias}
 	RemoveIdentityProviderFromOrganization(ctx context.Context, token, realm, idOfOrganization, alias string) error
 	// GetOrganizationCount returns the number of organizations in the realm
+	// GET /admin/realms/{realm}/organizations/count
 	GetOrganizationCount(ctx context.Context, token, realm string, params GetOrganizationCountParams) (int64, error)
-	// GetOrganizationMemberGroups returns the groups the member belongs to within the organization
+	// GetOrganizationMemberGroups returns the groups the member with the specified id belongs to within the organization
+	// GET /admin/realms/{realm}/organizations/{id}/members/{member-id}/groups
 	GetOrganizationMemberGroups(ctx context.Context, token, realm, idOfOrganization, idOfUser string, briefRepresentation bool) ([]*Group, error)
-	// GetOrganizationInvitations returns pending invitations for the organization
+	// GetOrganizationInvitations returns a list of pending invitations for the organization
+	// GET /admin/realms/{realm}/organizations/{id}/invitations
 	GetOrganizationInvitations(ctx context.Context, token, realm, idOfOrganization string, params GetOrganizationInvitationsParams) ([]*OrganizationInvitationRepresentation, error)
-	// GetOrganizationInvitationByID returns the invitation with the specified id
+	// GetOrganizationInvitationByID returns the invitation with the specified id for the organization
+	// GET /admin/realms/{realm}/organizations/{id}/invitations/{invitation-id}
 	GetOrganizationInvitationByID(ctx context.Context, token, realm, idOfOrganization, idOfInvitation string) (*OrganizationInvitationRepresentation, error)
 	// DeleteOrganizationInvitation removes the invitation with the specified id from the organization
+	// DELETE /admin/realms/{realm}/organizations/{id}/invitations/{invitation-id}
 	DeleteOrganizationInvitation(ctx context.Context, token, realm, idOfOrganization, idOfInvitation string) error
 	// ResendOrganizationInvitation resends the invitation with the specified id
+	// POST /admin/realms/{realm}/organizations/{id}/invitations/{invitation-id}/resend
 	ResendOrganizationInvitation(ctx context.Context, token, realm, idOfOrganization, idOfInvitation string) error
 	// AddOrganizationGroup creates a new top-level group in the organization
+	// POST /admin/realms/{realm}/organizations/{id}/groups
 	AddOrganizationGroup(ctx context.Context, token, realm, idOfOrganization string, group Group) (string, error)
 	// GetOrganizationGroups returns the groups associated with the organization
+	// GET /admin/realms/{realm}/organizations/{id}/groups
 	GetOrganizationGroups(ctx context.Context, token, realm, idOfOrganization string, params GetOrganizationGroupsParams) ([]*Group, error)
 	// GetOrganizationGroupByPath returns the organization group matching the given path
+	// GET /admin/realms/{realm}/organizations/{id}/groups/group-by-path/{path}
 	GetOrganizationGroupByPath(ctx context.Context, token, realm, idOfOrganization, groupPath string, subGroupsCount bool) (*Group, error)
 	// GetOrganizationGroupByID returns the organization group with the specified id
+	// GET /admin/realms/{realm}/organizations/{id}/groups/{group-id}
 	GetOrganizationGroupByID(ctx context.Context, token, realm, idOfOrganization, idOfGroup string) (*Group, error)
 	// UpdateOrganizationGroup updates the organization group with the specified id
+	// PUT /admin/realms/{realm}/organizations/{id}/groups/{group-id}
 	UpdateOrganizationGroup(ctx context.Context, token, realm, idOfOrganization string, group Group) error
 	// DeleteOrganizationGroup removes the organization group with the specified id
+	// DELETE /admin/realms/{realm}/organizations/{id}/groups/{group-id}
 	DeleteOrganizationGroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup string) error
 	// GetOrganizationGroupSubgroups returns the subgroups of the specified organization group
+	// GET /admin/realms/{realm}/organizations/{id}/groups/{group-id}/children
 	GetOrganizationGroupSubgroups(ctx context.Context, token, realm, idOfOrganization, idOfGroup string, params GetOrganizationGroupSubgroupsParams) ([]*Group, error)
 	// AddOrganizationSubgroup adds a subgroup to the specified organization group
+	// POST /admin/realms/{realm}/organizations/{id}/groups/{group-id}/children
 	AddOrganizationSubgroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup string, group Group) (string, error)
 	// GetOrganizationGroupMembers returns the members of the specified organization group
+	// GET /admin/realms/{realm}/organizations/{id}/groups/{group-id}/members
 	GetOrganizationGroupMembers(ctx context.Context, token, realm, idOfOrganization, idOfGroup string, params GetOrganizationMembersParams) ([]*MemberRepresentation, error)
 	// AddMemberToOrganizationGroup adds the user with the specified id to the organization group
+	// PUT /admin/realms/{realm}/organizations/{id}/groups/{group-id}/members/{user-id}
 	AddMemberToOrganizationGroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup, idOfUser string) error
 	// RemoveMemberFromOrganizationGroup removes the user with the specified id from the organization group
+	// DELETE /admin/realms/{realm}/organizations/{id}/groups/{group-id}/members/{user-id}
 	RemoveMemberFromOrganizationGroup(ctx context.Context, token, realm, idOfOrganization, idOfGroup, idOfUser string) error
 }

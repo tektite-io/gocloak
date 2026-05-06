@@ -230,7 +230,7 @@ func TestStringer(t *testing.T) {
 		ID:               gocloak.StringP("someID"),
 		CreatedTimeStamp: gocloak.Int64P(1607702613),
 		Enabled:          gocloak.BoolP(true),
-		RequiredActions:  &actions,
+		RequiredActions:  actions,
 		Access:           &access,
 	}
 
@@ -260,13 +260,13 @@ func TestStringer(t *testing.T) {
 	pmappers := []gocloak.ProtocolMapperRepresentation{
 		{
 			Name:   gocloak.StringP("someMapper"),
-			Config: &config,
+			Config: config,
 		},
 	}
 	clients := []gocloak.Client{
 		{
 			Name:            gocloak.StringP("someClient"),
-			ProtocolMappers: &pmappers,
+			ProtocolMappers: pmappers,
 		},
 		{
 			Name: gocloak.StringP("AnotherClient"),
@@ -275,7 +275,7 @@ func TestStringer(t *testing.T) {
 
 	realmRep := gocloak.RealmRepresentation{
 		DisplayName: gocloak.StringP("someRealm"),
-		Clients:     &clients,
+		Clients:     clients,
 	}
 
 	str = realmRep.String()
