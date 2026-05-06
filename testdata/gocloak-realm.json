@@ -672,7 +672,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "gocloak-secret",
       "redirectUris": ["localhost"],
       "webOrigins": [],
       "notBefore": 0,
