@@ -660,6 +660,61 @@ func Test_GetUserInfo(t *testing.T) {
 	require.Error(t, err, "")
 }
 
+func Test_GetUserProfileConfig(t *testing.T) {
+	t.Parallel()
+	cfg := GetConfig(t)
+	client := NewClientWithDebug(t)
+	token := GetAdminToken(t, client)
+	userProfileConfig, err := client.GetUserProfileConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+	)
+	require.NoError(t, err, "Failed to fetch user profile config")
+	t.Log(userProfileConfig)
+}
+
+func Test_UpdateUserProfileConfig(t *testing.T) {
+	t.Parallel()
+	cfg := GetConfig(t)
+	client := NewClientWithDebug(t)
+	token := GetAdminToken(t, client)
+	userProfileConfig, err := client.GetUserProfileConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+	)
+	require.NoError(t, err, "Failed to fetch user profile config")
+
+	t.Log(userProfileConfig)
+
+	policy := gocloak.UnmanagedAttributePolicyEnabled
+	userProfileConfig.UnmanagedAttributePolicy = &policy
+	
+	userProfileConfig.Attributes = append(userProfileConfig.Attributes, gocloak.UserProfileAttribute{
+		Name:        gocloak.StringP(GetRandomName("foo")),
+		DisplayName: gocloak.StringP("Foo"),
+		MultiValued: gocloak.BoolP(true),
+	})
+
+	err = client.UpdateUserProfileConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+		*userProfileConfig,
+	)
+	require.NoError(t, err, "Failed to update user profile config")
+
+	userProfileConfig, err = client.GetUserProfileConfig(
+		context.Background(),
+		token.AccessToken,
+		cfg.GoCloak.Realm,
+	)
+
+	require.NoError(t, err, "Failed to fetch user profile config")
+	t.Log(userProfileConfig)
+}
+
 func Test_GetRawUserInfo(t *testing.T) {
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)

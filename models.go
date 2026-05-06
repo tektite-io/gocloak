@@ -1688,6 +1688,63 @@ func prettyStringStruct(t any) string {
 	return string(json)
 }
 
+// UserProfileAttribute represents a user profile attribute
+type UserProfileAttribute struct {
+	Name        *string                          `json:"name,omitempty"`
+	DisplayName *string                          `json:"displayName,omitempty"`
+	Validations map[string]any                   `json:"validations,omitempty"`
+	Annotations map[string]any                   `json:"annotations,omitempty"`
+	Required    *UserProfileAttributeRequired    `json:"required,omitempty"`
+	Permissions *UserProfileAttributePermissions `json:"permissions,omitempty"`
+	Selector    *UserProfileAttributeSelector    `json:"selector,omitempty"`
+	Group       *string                          `json:"group,omitempty"`
+	MultiValued *bool                            `json:"multivalued,omitempty"`
+}
+
+// UserProfileAttributePermissions represents the permissions of a user profile attribute
+type UserProfileAttributePermissions struct {
+	View []string `json:"view,omitempty"`
+	Edit []string `json:"edit,omitempty"`
+}
+
+// UserProfileAttributeRequired represents the required roles and scopes for a user profile attribute
+type UserProfileAttributeRequired struct {
+	Roles  []string `json:"roles,omitempty"`
+	Scopes []string `json:"scopes,omitempty"`
+}
+
+// UserProfileAttributeSelector represents the scopes for selecting a user profile attribute
+type UserProfileAttributeSelector struct {
+	Scopes []string `json:"scopes,omitempty"`
+}
+
+// UserProfileConfig represents the configuration of user profile
+type UserProfileConfig struct {
+	Attributes               []UserProfileAttribute    `json:"attributes,omitempty"`
+	Groups                   []UserProfileGroup        `json:"groups,omitempty"`
+	UnmanagedAttributePolicy *UnmanagedAttributePolicy `json:"unmanagedAttributePolicy,omitempty"`
+}
+
+// UserProfileGroup represents a user profile group
+type UserProfileGroup struct {
+	Name               *string        `json:"name,omitempty"`
+	DisplayHeader      *string        `json:"displayHeader,omitempty"`
+	DisplayDescription *string        `json:"displayDescription,omitempty"`
+	Annotations        map[string]any `json:"annotations,omitempty"`
+}
+
+// UnmanagedAttributePolicy represents the policy for unmanaged attributes in user profile
+type UnmanagedAttributePolicy string
+
+const (
+	// UnmanagedAttributePolicyEnabled indicates that unmanaged attributes are enabled and can be used in user profile
+	UnmanagedAttributePolicyEnabled UnmanagedAttributePolicy = "ENABLED"
+	// UnmanagedAttributePolicyDisabled indicates that unmanaged attributes are disabled and cannot be used in user profile
+	UnmanagedAttributePolicyAdminView UnmanagedAttributePolicy = "ADMIN_VIEW"
+	// UnmanagedAttributePolicyAdminEdit indicates that unmanaged attributes are enabled but can only be viewed and edited by admin in user profile
+	UnmanagedAttributePolicyAdminEdit UnmanagedAttributePolicy = "ADMIN_EDIT"
+)
+
 // Stringer implementations for all struct types
 func (v *CertResponseKey) String() string                           { return prettyStringStruct(v) }
 func (v *CertResponse) String() string                              { return prettyStringStruct(v) }
@@ -1785,3 +1842,10 @@ func (v *GetOrganizationInvitationsParams) String() string          { return pre
 func (v *GetOrganizationGroupsParams) String() string               { return prettyStringStruct(v) }
 func (v *GetOrganizationGroupSubgroupsParams) String() string       { return prettyStringStruct(v) }
 func (v *OrganizationInvitationRepresentation) String() string      { return prettyStringStruct(v) }
+func (v *UnmanagedAttributePolicy) String() string                  { return prettyStringStruct(v) }
+func (v *UserProfileAttribute) String() string                      { return prettyStringStruct(v) }
+func (v *UserProfileAttributePermissions) String() string           { return prettyStringStruct(v) }
+func (v *UserProfileAttributeRequired) String() string              { return prettyStringStruct(v) }
+func (v *UserProfileAttributeSelector) String() string              { return prettyStringStruct(v) }
+func (v *UserProfileConfig) String() string                         { return prettyStringStruct(v) }
+func (v *UserProfileGroup) String() string                          { return prettyStringStruct(v) }

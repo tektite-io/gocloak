@@ -2787,6 +2787,22 @@ func (g *GoCloak) GetUserGroups(ctx context.Context, token, realm, userID string
 	return result, nil
 }
 
+// GetUserProfileConfig retrieves the user profile configuration for a realm
+func (g *GoCloak) GetUserProfileConfig(ctx context.Context, token, realm string) (*UserProfileConfig, error) {
+	const errMessage = "could not get user profile configuration"
+
+	var result UserProfileConfig
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "users", "profile"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 // GetUsers get all users in realm
 // Default number of results per page is 100, use GetUsersParams to specify it explicitly or to set offset for pagination
 func (g *GoCloak) GetUsers(ctx context.Context, token, realm string, params GetUsersParams) ([]*User, error) {
@@ -2876,6 +2892,18 @@ func (g *GoCloak) UpdateUser(ctx context.Context, token, realm string, user User
 
 	return checkForError(resp, err, errMessage)
 }
+
+// UpdateUserProfileConfig updates the user profile configuration for a realm
+func (g *GoCloak) UpdateUserProfileConfig(ctx context.Context, token, realm string, config UserProfileConfig) error {
+	const errMessage = "could not update user profile configuration"
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetBody(config).
+		Put(g.getAdminRealmURL(realm, "users", "profile"))
+
+	return checkForError(resp, err, errMessage)
+}
+
 
 // AddUserToGroup puts given user to given group
 func (g *GoCloak) AddUserToGroup(ctx context.Context, token, realm, userID, groupID string) error {
