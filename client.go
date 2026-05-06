@@ -13,10 +13,11 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 	"golang.org/x/mod/semver"
 
@@ -95,7 +96,7 @@ func (g *GoCloak) getServerVersion(ctx context.Context, token string) (string, e
 		return "", err
 	}
 
-	g.Config.version = *(serverInfo.SystemInfo.Version)
+	g.Config.version = PString(serverInfo.SystemInfo.Version)
 
 	return g.Config.version, nil
 }
@@ -145,7 +146,7 @@ func (g *GoCloak) GetRequestWithBasicAuth(ctx context.Context, clientID, clientS
 	return req
 }
 
-func (g *GoCloak) getRequestingParty(ctx context.Context, token string, realm string, options RequestingPartyTokenOptions, res interface{}) (*resty.Response, error) {
+func (g *GoCloak) getRequestingParty(ctx context.Context, token string, realm string, options RequestingPartyTokenOptions, res any) (*resty.Response, error) {
 	return g.GetRequestWithBearerAuth(ctx, token).
 		SetFormData(options.FormData()).
 		SetFormDataFromValues(url.Values{"permission": PStringSlice(options.Permissions)}).
@@ -157,7 +158,7 @@ func checkForError(resp *resty.Response, err error, errMessage string) error {
 	if err != nil {
 		return &APIError{
 			Code:    0,
-			Message: errors.Wrap(err, errMessage).Error(),
+			Message: fmt.Sprintf("%s: %v", errMessage, err),
 			Type:    ParseAPIErrType(err),
 		}
 	}
@@ -190,14 +191,14 @@ func checkForError(resp *resty.Response, err error, errMessage string) error {
 
 func getID(resp *resty.Response) string {
 	header := resp.Header().Get("Location")
-	splittedPath := strings.Split(header, urlSeparator)
+	parts := strings.Split(header, urlSeparator)
 
-	return splittedPath[len(splittedPath)-1]
+	return parts[len(parts)-1]
 }
 
 func findUsedKey(usedKeyID string, keys []CertResponseKey) *CertResponseKey {
 	for _, key := range keys {
-		if *(key.Kid) == usedKeyID {
+		if key.Kid != nil && *key.Kid == usedKeyID {
 			return &key
 		}
 	}
@@ -348,7 +349,7 @@ func (g *GoCloak) GetServerInfo(ctx context.Context, accessToken string) (*Serve
 		SetResult(&result).
 		Get(makeURL(g.basePath, "admin", "serverinfo"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -364,7 +365,7 @@ func (g *GoCloak) GetUserInfo(ctx context.Context, accessToken, realm string) (*
 		SetResult(&result).
 		Get(g.getRealmURL(realm, g.Config.openIDConnect, "userinfo"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -372,15 +373,15 @@ func (g *GoCloak) GetUserInfo(ctx context.Context, accessToken, realm string) (*
 }
 
 // GetRawUserInfo calls the UserInfo endpoint and returns a raw json object
-func (g *GoCloak) GetRawUserInfo(ctx context.Context, accessToken, realm string) (map[string]interface{}, error) {
+func (g *GoCloak) GetRawUserInfo(ctx context.Context, accessToken, realm string) (map[string]any, error) {
 	const errMessage = "could not get user info"
 
-	var result map[string]interface{}
+	var result map[string]any
 	resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
 		SetResult(&result).
 		Get(g.getRealmURL(realm, g.Config.openIDConnect, "userinfo"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -395,7 +396,7 @@ func (g *GoCloak) getNewCerts(ctx context.Context, realm string) (*CertResponse,
 		SetResult(&result).
 		Get(g.getRealmURL(realm, g.Config.openIDConnect, "certs"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -419,7 +420,7 @@ func (g *GoCloak) GetCerts(ctx context.Context, realm string) (*CertResponse, er
 
 	cert, err := g.getNewCerts(ctx, realm)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	g.certsCache.Store(realm, cert)
@@ -439,7 +440,7 @@ func (g *GoCloak) GetIssuer(ctx context.Context, realm string) (*IssuerResponse,
 		SetResult(&result).
 		Get(g.getRealmURL(realm))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -459,7 +460,7 @@ func (g *GoCloak) RetrospectToken(ctx context.Context, accessToken, clientID, cl
 		SetResult(&result).
 		Post(g.getRealmURL(realm, g.Config.tokenEndpoint, "introspect"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -472,19 +473,19 @@ func (g *GoCloak) decodeAccessTokenWithClaims(ctx context.Context, accessToken, 
 
 	decodedHeader, err := jwx.DecodeAccessTokenHeader(accessToken)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	certResult, err := g.GetCerts(ctx, realm)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 	if certResult.Keys == nil {
-		return nil, errors.Wrap(errors.New("there is no keys to decode the token"), errMessage)
+		return nil, fmt.Errorf("%s: there is no keys to decode the token", errMessage)
 	}
 	usedKey := findUsedKey(decodedHeader.Kid, *certResult.Keys)
 	if usedKey == nil {
-		return nil, errors.Wrap(errors.New("cannot find a key to decode the token"), errMessage)
+		return nil, fmt.Errorf("%s: cannot find a key to decode the token", errMessage)
 	}
 
 	if strings.HasPrefix(decodedHeader.Alg, "ES") {
@@ -527,7 +528,7 @@ func (g *GoCloak) GetToken(ctx context.Context, realm string, options TokenOptio
 		SetResult(&token).
 		Post(g.getRealmURL(realm, g.Config.tokenEndpoint))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -541,7 +542,7 @@ func (g *GoCloak) GetRequestingPartyToken(ctx context.Context, token, realm stri
 	var res JWT
 
 	resp, err := g.getRequestingParty(ctx, token, realm, options, &res)
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -557,7 +558,7 @@ func (g *GoCloak) GetRequestingPartyPermissions(ctx context.Context, token, real
 	options.ResponseMode = StringP("permissions")
 
 	resp, err := g.getRequestingParty(ctx, token, realm, options, &res)
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -572,7 +573,7 @@ func (g *GoCloak) GetRequestingPartyPermissionDecision(ctx context.Context, toke
 	options.ResponseMode = StringP("decision")
 
 	resp, err := g.getRequestingParty(ctx, token, realm, options, &res)
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -661,7 +662,7 @@ func (g *GoCloak) LoginClientSignedJWT(
 	ctx context.Context,
 	clientID,
 	realm string,
-	key interface{},
+	key any,
 	signedMethod jwt.SigningMethod,
 	expiresAt *jwt.NumericDate,
 ) (*JWT, error) {
@@ -776,7 +777,7 @@ func (g *GoCloak) ExecuteActionsEmail(ctx context.Context, token, realm string, 
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return errors.Wrap(err, errMessage)
+		return fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -817,7 +818,7 @@ func (g *GoCloak) CreateGroup(ctx context.Context, token, realm string, group Gr
 		SetBody(group).
 		Post(g.getAdminRealmURL(realm, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 	return getID(resp), nil
@@ -831,7 +832,7 @@ func (g *GoCloak) CreateChildGroup(ctx context.Context, token, realm, groupID st
 		SetBody(group).
 		Post(g.getAdminRealmURL(realm, "groups", groupID, "children"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -846,7 +847,7 @@ func (g *GoCloak) CreateComponent(ctx context.Context, token, realm string, comp
 		SetBody(component).
 		Post(g.getAdminRealmURL(realm, "components"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -861,7 +862,7 @@ func (g *GoCloak) CreateClient(ctx context.Context, accessToken, realm string, n
 		SetBody(newClient).
 		Post(g.getAdminRealmURL(realm, "clients"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -879,7 +880,7 @@ func (g *GoCloak) CreateClientRepresentation(ctx context.Context, token, realm s
 		SetBody(newClient).
 		Post(g.getRealmURL(realm, "clients-registrations", "default"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -894,7 +895,7 @@ func (g *GoCloak) CreateClientRole(ctx context.Context, token, realm, idOfClient
 		SetBody(role).
 		Post(g.getAdminRealmURL(realm, "clients", idOfClient, "roles"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -909,7 +910,7 @@ func (g *GoCloak) CreateClientScope(ctx context.Context, token, realm string, sc
 		SetBody(scope).
 		Post(g.getAdminRealmURL(realm, "client-scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -924,7 +925,7 @@ func (g *GoCloak) CreateClientScopeProtocolMapper(ctx context.Context, token, re
 		SetBody(protocolMapper).
 		Post(g.getAdminRealmURL(realm, "client-scopes", scopeID, "protocol-mappers", "models"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -936,7 +937,7 @@ func (g *GoCloak) UpdateGroup(ctx context.Context, token, realm string, updatedG
 	const errMessage = "could not update group"
 
 	if NilOrEmpty(updatedGroup.ID) {
-		return errors.Wrap(errors.New("ID of a group required"), errMessage)
+		return fmt.Errorf("%s: ID of a group required", errMessage)
 	}
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetBody(updatedGroup).
@@ -956,7 +957,7 @@ func (g *GoCloak) UpdateGroupManagementPermissions(ctx context.Context, accessTo
 		SetBody(managementPermissions).
 		Put(g.getAdminRealmURL(realm, "groups", idOfGroup, "management", "permissions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -968,7 +969,7 @@ func (g *GoCloak) UpdateClient(ctx context.Context, token, realm string, updated
 	const errMessage = "could not update client"
 
 	if NilOrEmpty(updatedClient.ID) {
-		return errors.Wrap(errors.New("ID of a client required"), errMessage)
+		return fmt.Errorf("%s: ID of a client required", errMessage)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -983,7 +984,7 @@ func (g *GoCloak) UpdateClientRepresentation(ctx context.Context, accessToken, r
 	const errMessage = "could not update client representation"
 
 	if NilOrEmpty(updatedClient.ID) {
-		return nil, errors.Wrap(errors.New("ID of a client required"), errMessage)
+		return nil, fmt.Errorf("%s: ID of a client required", errMessage)
 	}
 
 	var result Client
@@ -993,7 +994,7 @@ func (g *GoCloak) UpdateClientRepresentation(ctx context.Context, accessToken, r
 		SetBody(updatedClient).
 		Put(g.getRealmURL(realm, "clients-registrations", "default", PString(updatedClient.ClientID)))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1011,7 +1012,7 @@ func (g *GoCloak) UpdateClientManagementPermissions(ctx context.Context, accessT
 		SetBody(managementPermissions).
 		Put(g.getAdminRealmURL(realm, "clients", idOfClient, "management", "permissions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1131,7 +1132,7 @@ func (g *GoCloak) GetClient(ctx context.Context, token, realm, idOfClient string
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1148,7 +1149,7 @@ func (g *GoCloak) GetClientRepresentation(ctx context.Context, accessToken, real
 		SetResult(&result).
 		Get(g.getRealmURL(realm, "clients-registrations", "default", clientID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1165,7 +1166,7 @@ func (g *GoCloak) GetAdapterConfiguration(ctx context.Context, accessToken, real
 		SetResult(&result).
 		Get(g.getRealmURL(realm, "clients-registrations", "install", clientID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1182,7 +1183,7 @@ func (g *GoCloak) GetClientsDefaultScopes(ctx context.Context, token, realm, idO
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "default-client-scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1219,7 +1220,7 @@ func (g *GoCloak) GetClientsOptionalScopes(ctx context.Context, token, realm, id
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "optional-client-scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1256,7 +1257,7 @@ func (g *GoCloak) GetDefaultOptionalClientScopes(ctx context.Context, token, rea
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "default-optional-client-scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1273,7 +1274,7 @@ func (g *GoCloak) GetDefaultDefaultClientScopes(ctx context.Context, token, real
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "default-default-client-scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1290,7 +1291,7 @@ func (g *GoCloak) GetClientScope(ctx context.Context, token, realm, scopeID stri
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", scopeID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1307,7 +1308,7 @@ func (g *GoCloak) GetClientScopes(ctx context.Context, token, realm string) ([]*
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1324,7 +1325,7 @@ func (g *GoCloak) GetClientScopeProtocolMappers(ctx context.Context, token, real
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", scopeID, "protocol-mappers", "models"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1341,7 +1342,7 @@ func (g *GoCloak) GetClientScopeProtocolMapper(ctx context.Context, token, realm
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", scopeID, "protocol-mappers", "models", protocolMapperID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1358,7 +1359,7 @@ func (g *GoCloak) GetClientScopeMappings(ctx context.Context, token, realm, idOf
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "scope-mappings"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1391,7 +1392,7 @@ func (g *GoCloak) GetClientScopeMappingsRealmRoles(ctx context.Context, token, r
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "scope-mappings", "realm"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1408,7 +1409,7 @@ func (g *GoCloak) GetClientScopeMappingsRealmRolesAvailable(ctx context.Context,
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "scope-mappings", "realm", "available"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1447,7 +1448,7 @@ func (g *GoCloak) GetClientScopeMappingsClientRoles(ctx context.Context, token, 
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "scope-mappings", "clients", idOfSelectedClient))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1464,7 +1465,7 @@ func (g *GoCloak) GetClientScopeMappingsClientRolesAvailable(ctx context.Context
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "scope-mappings", "clients", idOfSelectedClient, "available"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1503,7 +1504,7 @@ func (g *GoCloak) GetClientSecret(ctx context.Context, token, realm, idOfClient 
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "client-secret"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1519,7 +1520,7 @@ func (g *GoCloak) GetClientServiceAccount(ctx context.Context, token, realm, idO
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "service-account-user"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1535,7 +1536,7 @@ func (g *GoCloak) RegenerateClientSecret(ctx context.Context, token, realm, idOf
 		SetResult(&result).
 		Post(g.getAdminRealmURL(realm, "clients", idOfClient, "client-secret"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1553,7 +1554,7 @@ func (g *GoCloak) GetClientOfflineSessions(ctx context.Context, token, realm, id
 
 		queryParams, err = GetQueryParams(params[0])
 		if err != nil {
-			return nil, errors.Wrap(err, errMessage)
+			return nil, fmt.Errorf("%s: %w", errMessage, err)
 		}
 	}
 
@@ -1562,7 +1563,7 @@ func (g *GoCloak) GetClientOfflineSessions(ctx context.Context, token, realm, id
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "offline-sessions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1580,7 +1581,7 @@ func (g *GoCloak) GetClientUserSessions(ctx context.Context, token, realm, idOfC
 
 		queryParams, err = GetQueryParams(params[0])
 		if err != nil {
-			return nil, errors.Wrap(err, errMessage)
+			return nil, fmt.Errorf("%s: %w", errMessage, err)
 		}
 	}
 
@@ -1589,7 +1590,7 @@ func (g *GoCloak) GetClientUserSessions(ctx context.Context, token, realm, idOfC
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "user-sessions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1604,7 +1605,7 @@ func (g *GoCloak) CreateClientProtocolMapper(ctx context.Context, token, realm, 
 		SetBody(mapper).
 		Post(g.getAdminRealmURL(realm, "clients", idOfClient, "protocol-mappers", "models"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -1641,7 +1642,7 @@ func (g *GoCloak) GetKeyStoreConfig(ctx context.Context, token, realm string) (*
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "keys"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1657,7 +1658,7 @@ func (g *GoCloak) GetComponents(ctx context.Context, token, realm string) ([]*Co
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "components"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1671,14 +1672,14 @@ func (g *GoCloak) GetComponentsWithParams(ctx context.Context, token, realm stri
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "components"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1696,7 +1697,7 @@ func (g *GoCloak) GetComponent(ctx context.Context, token, realm string, compone
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, componentURL))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1724,7 +1725,7 @@ func (g *GoCloak) GetDefaultGroups(ctx context.Context, token, realm string) ([]
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "default-groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1759,7 +1760,7 @@ func (g *GoCloak) getRoleMappings(ctx context.Context, token, realm, path, objec
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, path, objectID, "role-mappings"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1786,7 +1787,7 @@ func (g *GoCloak) GetGroup(ctx context.Context, token, realm, groupID string) (*
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "groups", groupID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1800,7 +1801,7 @@ func (g *GoCloak) GetChildGroups(ctx context.Context, token, realm, groupID stri
 	var result []*Group
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -1808,7 +1809,7 @@ func (g *GoCloak) GetChildGroups(ctx context.Context, token, realm, groupID stri
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "groups", groupID, "children"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1825,7 +1826,7 @@ func (g *GoCloak) GetGroupByPath(ctx context.Context, token, realm, groupPath st
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "group-by-path", groupPath))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1839,7 +1840,7 @@ func (g *GoCloak) GetGroups(ctx context.Context, token, realm string, params Get
 	var result []*Group
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -1847,7 +1848,7 @@ func (g *GoCloak) GetGroups(ctx context.Context, token, realm string, params Get
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1864,7 +1865,7 @@ func (g *GoCloak) GetGroupManagementPermissions(ctx context.Context, token, real
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "groups", idOfGroup, "management", "permissions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1880,7 +1881,7 @@ func (g *GoCloak) GetGroupsByRole(ctx context.Context, token, realm string, role
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "roles", roleName, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1896,7 +1897,7 @@ func (g *GoCloak) GetGroupsByClientRole(ctx context.Context, token, realm string
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", clientID, "roles", roleName, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1910,15 +1911,15 @@ func (g *GoCloak) GetGroupsCount(ctx context.Context, token, realm string, param
 	var result GroupsCount
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return 0, errors.Wrap(err, errMessage)
+		return 0, fmt.Errorf("%s: %w", errMessage, err)
 	}
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "groups", "count"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
-		return -1, errors.Wrap(err, errMessage)
+	if err = checkForError(resp, err, errMessage); err != nil {
+		return -1, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	return result.Count, nil
@@ -1931,7 +1932,7 @@ func (g *GoCloak) GetGroupMembers(ctx context.Context, token, realm, groupID str
 	var result []*User
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -1939,7 +1940,7 @@ func (g *GoCloak) GetGroupMembers(ctx context.Context, token, realm, groupID str
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "groups", groupID, "members"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1953,7 +1954,7 @@ func (g *GoCloak) GetClientRoles(ctx context.Context, token, realm, idOfClient s
 	var result []*Role
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -1961,7 +1962,7 @@ func (g *GoCloak) GetClientRoles(ctx context.Context, token, realm, idOfClient s
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "roles"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -1977,7 +1978,7 @@ func (g *GoCloak) GetClientRoleByID(ctx context.Context, token, realm, roleID st
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "roles-by-id", roleID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2105,7 +2106,7 @@ func (g *GoCloak) GetClientRole(ctx context.Context, token, realm, idOfClient, r
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "roles", roleName))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2119,14 +2120,14 @@ func (g *GoCloak) GetClients(ctx context.Context, token, realm string, params Ge
 	var result []*Client
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2143,7 +2144,7 @@ func (g *GoCloak) GetClientManagementPermissions(ctx context.Context, token, rea
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "management", "permissions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2172,7 +2173,7 @@ func (g *GoCloak) CreateRealmRole(ctx context.Context, token string, realm strin
 		SetBody(role).
 		Post(g.getAdminRealmURL(realm, "roles"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -2205,7 +2206,7 @@ func (g *GoCloak) GetRealmRoleByID(ctx context.Context, token, realm, roleID str
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "roles-by-id", roleID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2219,7 +2220,7 @@ func (g *GoCloak) GetRealmRoles(ctx context.Context, token, realm string, params
 	var result []*Role
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2227,7 +2228,7 @@ func (g *GoCloak) GetRealmRoles(ctx context.Context, token, realm string, params
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "roles"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2522,7 +2523,7 @@ func (g *GoCloak) CreateRealm(ctx context.Context, token string, realm RealmRepr
 		SetBody(&realm).
 		Post(g.getAdminRealmURL(""))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 	return getID(resp), nil
@@ -2587,7 +2588,7 @@ func (g *GoCloak) GetAuthenticationFlows(ctx context.Context, token, realm strin
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "authentication", "flows"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -2601,7 +2602,7 @@ func (g *GoCloak) GetAuthenticationFlow(ctx context.Context, token, realm string
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "authentication", "flows", authenticationFlowID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -2649,7 +2650,7 @@ func (g *GoCloak) GetAuthenticationExecutions(ctx context.Context, token, realm,
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "authentication", "flows", flow, "executions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -2705,7 +2706,7 @@ func (g *GoCloak) CreateUser(ctx context.Context, token, realm string, user User
 		SetBody(user).
 		Post(g.getAdminRealmURL(realm, "users"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -2727,7 +2728,7 @@ func (g *GoCloak) GetUserByID(ctx context.Context, accessToken, realm, userID st
 	const errMessage = "could not get user by id"
 
 	if userID == "" {
-		return nil, errors.Wrap(errors.New("userID shall not be empty"), errMessage)
+		return nil, fmt.Errorf("%s: userID shall not be empty", errMessage)
 	}
 
 	var result User
@@ -2735,7 +2736,7 @@ func (g *GoCloak) GetUserByID(ctx context.Context, accessToken, realm, userID st
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "users", userID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2749,7 +2750,7 @@ func (g *GoCloak) GetUserCount(ctx context.Context, token string, realm string, 
 	var result int
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return 0, errors.Wrap(err, errMessage)
+		return 0, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2757,8 +2758,8 @@ func (g *GoCloak) GetUserCount(ctx context.Context, token string, realm string, 
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "users", "count"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
-		return -1, errors.Wrap(err, errMessage)
+	if err = checkForError(resp, err, errMessage); err != nil {
+		return -1, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	return result, nil
@@ -2771,7 +2772,7 @@ func (g *GoCloak) GetUserGroups(ctx context.Context, token, realm, userID string
 	var result []*Group
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2779,7 +2780,7 @@ func (g *GoCloak) GetUserGroups(ctx context.Context, token, realm, userID string
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "users", userID, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2793,7 +2794,7 @@ func (g *GoCloak) GetUsers(ctx context.Context, token, realm string, params GetU
 	var result []*User
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2801,7 +2802,7 @@ func (g *GoCloak) GetUsers(ctx context.Context, token, realm string, params GetU
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "users"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2815,7 +2816,7 @@ func (g *GoCloak) GetUsersByRoleName(ctx context.Context, token, realm, roleName
 	var result []*User
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2823,7 +2824,7 @@ func (g *GoCloak) GetUsersByRoleName(ctx context.Context, token, realm, roleName
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "roles", roleName, "users"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2845,7 +2846,7 @@ func (g *GoCloak) GetUsersByClientRoleName(ctx context.Context, token, realm, id
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "roles", roleName, "users"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2904,7 +2905,7 @@ func (g *GoCloak) GetUserSessions(ctx context.Context, token, realm, userID stri
 		SetResult(&res).
 		Get(g.getAdminRealmURL(realm, "users", userID, "sessions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -2920,7 +2921,7 @@ func (g *GoCloak) GetUserOfflineSessionsForClient(ctx context.Context, token, re
 		SetResult(&res).
 		Get(g.getAdminRealmURL(realm, "users", userID, "offline-sessions", idOfClient))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3023,11 +3024,11 @@ func (g *GoCloak) GetUserFederatedIdentities(ctx context.Context, token, realm, 
 		SetResult(&res).
 		Get(g.getAdminRealmURL(realm, "users", userID, "federated-identity"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
-	return res, err
+	return res, nil
 }
 
 // CreateUserFederatedIdentity creates an user federated identity
@@ -3060,7 +3061,7 @@ func (g *GoCloak) GetUserBruteForceDetectionStatus(ctx context.Context, accessTo
 		SetResult(&result).
 		Get(g.getAttackDetectionURL(realm, "users", userID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3079,7 +3080,7 @@ func (g *GoCloak) CreateIdentityProvider(ctx context.Context, token string, real
 		SetBody(providerRep).
 		Post(g.getAdminRealmURL(realm, "identity-provider", "instances"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -3095,7 +3096,7 @@ func (g *GoCloak) GetIdentityProviders(ctx context.Context, token, realm string)
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "identity-provider", "instances"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3111,7 +3112,7 @@ func (g *GoCloak) GetIdentityProvider(ctx context.Context, token, realm, alias s
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "identity-provider", "instances", alias))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3146,7 +3147,7 @@ func (g *GoCloak) ExportIDPPublicBrokerConfig(ctx context.Context, token, realm,
 	resp, err := g.GetRequestWithBearerAuthXMLHeader(ctx, token).
 		Get(g.getAdminRealmURL(realm, "identity-provider", "instances", alias, "export"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3167,7 +3168,7 @@ func (g *GoCloak) ImportIdentityProviderConfig(ctx context.Context, token, realm
 		}).
 		Post(g.getAdminRealmURL(realm, "identity-provider", "import-config"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3187,7 +3188,7 @@ func (g *GoCloak) ImportIdentityProviderConfigFromFile(ctx context.Context, toke
 		}).
 		Post(g.getAdminRealmURL(realm, "identity-provider", "import-config"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3202,7 +3203,7 @@ func (g *GoCloak) CreateIdentityProviderMapper(ctx context.Context, token, realm
 		SetBody(mapper).
 		Post(g.getAdminRealmURL(realm, "identity-provider", "instances", alias, "mappers"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -3218,7 +3219,7 @@ func (g *GoCloak) GetIdentityProviderMapper(ctx context.Context, token string, r
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "identity-provider", "instances", alias, "mappers", mapperID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3244,7 +3245,7 @@ func (g *GoCloak) GetIdentityProviderMappers(ctx context.Context, token, realm, 
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "identity-provider", "instances", alias, "mappers"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3260,7 +3261,7 @@ func (g *GoCloak) GetIdentityProviderMapperByID(ctx context.Context, token, real
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "identity-provider", "instances", alias, "mappers", mapperID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3291,7 +3292,7 @@ func (g *GoCloak) GetResource(ctx context.Context, token, realm, idOfClient, res
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "resource", resourceID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3309,7 +3310,7 @@ func (g *GoCloak) GetResourceClient(ctx context.Context, token, realm, resourceI
 
 	// http://${host}:${port}/auth/realms/${realm_name}/authz/protection/resource_set/{resource_id}
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3331,7 +3332,7 @@ func (g *GoCloak) GetResources(ctx context.Context, token, realm, idOfClient str
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "resource"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3354,7 +3355,7 @@ func (g *GoCloak) GetResourcesClient(ctx context.Context, token, realm string, p
 		SetQueryParams(queryParams).
 		Get(g.getRealmURL(realm, "authz", "protection", "resource_set"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3379,7 +3380,7 @@ func (g *GoCloak) GetResourceServer(ctx context.Context, token, realm, idOfClien
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "settings"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3426,7 +3427,7 @@ func (g *GoCloak) CreateResource(ctx context.Context, token, realm string, idOfC
 		SetBody(resource).
 		Post(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "resource"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3443,7 +3444,7 @@ func (g *GoCloak) CreateResourceClient(ctx context.Context, token, realm string,
 		SetBody(resource).
 		Post(g.getRealmURL(realm, "authz", "protection", "resource_set"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3479,7 +3480,7 @@ func (g *GoCloak) GetScope(ctx context.Context, token, realm, idOfClient, scopeI
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "scope", scopeID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3500,7 +3501,7 @@ func (g *GoCloak) GetScopes(ctx context.Context, token, realm, idOfClient string
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "scope"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3517,7 +3518,7 @@ func (g *GoCloak) CreateScope(ctx context.Context, token, realm, idOfClient stri
 		SetBody(scope).
 		Post(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "scope"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3534,7 +3535,7 @@ func (g *GoCloak) GetPermissionScope(ctx context.Context, token, realm, idOfClie
 		SetBody(result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "permission", "scope", idOfScope))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3586,7 +3587,7 @@ func (g *GoCloak) GetPolicy(ctx context.Context, token, realm, idOfClient, polic
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "policy", policyID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3599,7 +3600,7 @@ func (g *GoCloak) GetPolicies(ctx context.Context, token, realm, idOfClient stri
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	compResult, err := g.compareVersions(ctx, "20.0.0", token)
@@ -3619,7 +3620,7 @@ func (g *GoCloak) GetPolicies(ctx context.Context, token, realm, idOfClient stri
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, path...))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3642,7 +3643,7 @@ func (g *GoCloak) CreatePolicy(ctx context.Context, token, realm, idOfClient str
 		SetBody(policy).
 		Post(g.getAdminRealmURL(realm, path...))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3689,7 +3690,7 @@ func (g *GoCloak) GetAuthorizationPolicyAssociatedPolicies(ctx context.Context, 
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "policy", policyID, "associatedPolicies"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3705,7 +3706,7 @@ func (g *GoCloak) GetAuthorizationPolicyResources(ctx context.Context, token, re
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "policy", policyID, "resources"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3721,7 +3722,7 @@ func (g *GoCloak) GetAuthorizationPolicyScopes(ctx context.Context, token, realm
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "policy", policyID, "scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3737,7 +3738,7 @@ func (g *GoCloak) GetResourcePolicy(ctx context.Context, token, realm, permissio
 		SetResult(&result).
 		Get(g.getRealmURL(realm, "authz", "protection", "uma-policy", permissionID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3759,7 +3760,7 @@ func (g *GoCloak) GetResourcePolicies(ctx context.Context, token, realm string, 
 		SetQueryParams(queryParams).
 		Get(g.getRealmURL(realm, "authz", "protection", "uma-policy"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3776,7 +3777,7 @@ func (g *GoCloak) CreateResourcePolicy(ctx context.Context, token, realm, resour
 		SetBody(policy).
 		Post(g.getRealmURL(realm, "authz", "protection", "uma-policy", resourceID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3813,7 +3814,7 @@ func (g *GoCloak) GetPermission(ctx context.Context, token, realm, idOfClient, p
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "permission", permissionID))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3829,7 +3830,7 @@ func (g *GoCloak) GetDependentPermissions(ctx context.Context, token, realm, idO
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "policy", policyID, "dependentPolicies"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3845,7 +3846,7 @@ func (g *GoCloak) GetPermissionResources(ctx context.Context, token, realm, idOf
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "permission", permissionID, "resources"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3860,7 +3861,7 @@ func (g *GoCloak) GetScopePermissions(ctx context.Context, token, realm, idOfCli
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "scope", idOfScope, "permissions"))
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3876,7 +3877,7 @@ func (g *GoCloak) GetPermissionScopes(ctx context.Context, token, realm, idOfCli
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "permission", permissionID, "scopes"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3889,7 +3890,7 @@ func (g *GoCloak) GetPermissions(ctx context.Context, token, realm, idOfClient s
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	path := []string{"clients", idOfClient, "authz", "resource-server", "permission"}
@@ -3903,7 +3904,7 @@ func (g *GoCloak) GetPermissions(ctx context.Context, token, realm, idOfClient s
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, path...))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3944,7 +3945,7 @@ func (g *GoCloak) CreatePermissionTicket(ctx context.Context, token, realm strin
 		SetBody(permissions).
 		Post(g.getRealmURL(realm, "authz", "protection", "permission"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -3984,7 +3985,7 @@ func (g *GoCloak) GrantUserPermission(ctx context.Context, token, realm string, 
 		SetBody(permission).
 		Post(g.getRealmURL(realm, "authz", "protection", "permission", "ticket"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4020,7 +4021,7 @@ func (g *GoCloak) UpdateUserPermission(ctx context.Context, token, realm string,
 		SetBody(permission).
 		Put(g.getRealmURL(realm, "authz", "protection", "permission", "ticket"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4046,7 +4047,7 @@ func (g *GoCloak) GetUserPermissions(ctx context.Context, token, realm string, p
 		SetQueryParams(queryParams).
 		Get(g.getRealmURL(realm, "authz", "protection", "permission", "ticket"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4077,7 +4078,7 @@ func (g *GoCloak) CreatePermission(ctx context.Context, token, realm, idOfClient
 		SetBody(permission).
 		Post(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "permission", *(permission.Type)))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4121,7 +4122,7 @@ func (g *GoCloak) GetCredentialRegistrators(ctx context.Context, token, realm st
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "credential-registrators"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4137,7 +4138,7 @@ func (g *GoCloak) GetConfiguredUserStorageCredentialTypes(ctx context.Context, t
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "users", userID, "configured-user-storage-credential-types"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4153,7 +4154,7 @@ func (g *GoCloak) GetCredentials(ctx context.Context, token, realm, userID strin
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "users", userID, "credentials"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4219,7 +4220,7 @@ func (g *GoCloak) GetEvents(ctx context.Context, token string, realm string, par
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	var result []*EventRepresentation
@@ -4228,7 +4229,7 @@ func (g *GoCloak) GetEvents(ctx context.Context, token string, realm string, par
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "events"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4241,7 +4242,7 @@ func (g *GoCloak) GetAdminEvents(ctx context.Context, token string, realm string
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	var result []*AdminEventRepresentation
@@ -4250,7 +4251,7 @@ func (g *GoCloak) GetAdminEvents(ctx context.Context, token string, realm string
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "admin-events"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4267,7 +4268,7 @@ func (g *GoCloak) GetClientScopesScopeMappingsRealmRolesAvailable(ctx context.Co
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", clientScopeID, "scope-mappings", "realm", "available"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4284,7 +4285,7 @@ func (g *GoCloak) GetClientScopesScopeMappingsRealmRoles(ctx context.Context, to
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", clientScopeID, "scope-mappings", "realm"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4321,7 +4322,7 @@ func (g *GoCloak) RegisterRequiredAction(ctx context.Context, token string, real
 		SetBody(requiredAction).
 		Post(g.getAdminRealmURL(realm, "authentication", "register-required-action"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return err
 	}
 
@@ -4338,7 +4339,7 @@ func (g *GoCloak) GetUnregisteredRequiredActions(ctx context.Context, token stri
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "authentication", "unregistered-required-actions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4354,11 +4355,11 @@ func (g *GoCloak) GetRequiredActions(ctx context.Context, token string, realm st
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "authentication", "required-actions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
-	return result, err
+	return result, nil
 }
 
 // GetRequiredAction gets a required action for a given realm
@@ -4374,7 +4375,7 @@ func (g *GoCloak) GetRequiredAction(ctx context.Context, token string, realm str
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "authentication", "required-actions", alias))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4405,7 +4406,7 @@ func (g *GoCloak) DeleteRequiredAction(ctx context.Context, token string, realm 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		Delete(g.getAdminRealmURL(realm, "authentication", "required-actions", alias))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return err
 	}
 
@@ -4437,7 +4438,7 @@ func (g *GoCloak) GetClientScopesScopeMappingsClientRolesAvailable(ctx context.C
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", idOfClientScope, "scope-mappings", "clients", idOfClient, "available"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4455,7 +4456,7 @@ func (g *GoCloak) GetClientScopesScopeMappingsClientRoles(ctx context.Context, t
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "client-scopes", idOfClientScope, "scope-mappings", "clients", idOfClient))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4500,7 +4501,7 @@ func (g *GoCloak) UpdateUsersManagementPermissions(ctx context.Context, accessTo
 		SetBody(managementPermissions).
 		Put(g.getAdminRealmURL(realm, "users-management-permissions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4517,7 +4518,7 @@ func (g *GoCloak) GetUsersManagementPermissions(ctx context.Context, accessToken
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "users-management-permissions"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4532,7 +4533,7 @@ func (g *GoCloak) CreateOrganization(ctx context.Context, token, realm string, o
 		SetBody(organization).
 		Post(g.getAdminRealmURL(realm, "organizations"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -4545,7 +4546,7 @@ func (g *GoCloak) GetOrganizations(ctx context.Context, token, realm string, par
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	var result []*OrganizationRepresentation
@@ -4554,7 +4555,7 @@ func (g *GoCloak) GetOrganizations(ctx context.Context, token, realm string, par
 		SetQueryParams(queryParams).
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations"))
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4570,7 +4571,7 @@ func (g *GoCloak) GetOrganizationByID(ctx context.Context, token, realm, idOfOrg
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4582,7 +4583,7 @@ func (g *GoCloak) UpdateOrganization(ctx context.Context, token, realm string, o
 	const errMessage = "could not update organization"
 
 	if NilOrEmpty(organization.ID) {
-		return errors.Wrap(errors.New("ID of an organization required"), errMessage)
+		return fmt.Errorf("%s: ID of an organization required", errMessage)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -4617,7 +4618,7 @@ func (g *GoCloak) InviteUserToOrganization(ctx context.Context, token, realm str
 		SetFormData(user.FormData()).
 		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", "invite-user"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return err
 	}
 
@@ -4668,11 +4669,11 @@ func (g *GoCloak) GetOrganizationMemberCount(ctx context.Context, token, realm, 
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", "count"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
-		return -1, errors.Wrap(err, errMessage)
+	if err = checkForError(resp, err, errMessage); err != nil {
+		return -1, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
-	return result, err
+	return result, nil
 }
 
 // GetOrganizationMembers returns a paginated list of organization members filtered according to the specified parameters
@@ -4682,7 +4683,7 @@ func (g *GoCloak) GetOrganizationMembers(ctx context.Context, token, realm, idOf
 	var result []*MemberRepresentation
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -4690,11 +4691,11 @@ func (g *GoCloak) GetOrganizationMembers(ctx context.Context, token, realm, idOf
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
-	return result, err
+	return result, nil
 }
 
 // GetOrganizationMemberByID returns the member of the organization with the specified id
@@ -4708,11 +4709,11 @@ func (g *GoCloak) GetOrganizationMemberByID(ctx context.Context, token, realm, i
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", idOfUser))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
-	return result, err
+	return result, nil
 }
 
 // GetMemberAssociatedOrganizations returns the organizations associated with the user that has the specified id
@@ -4724,11 +4725,11 @@ func (g *GoCloak) GetMemberAssociatedOrganizations(ctx context.Context, token, r
 		SetResult(&result).
 		SetQueryParam("briefRepresentation", strconv.FormatBool(briefRepresentation)).
 		Get(g.getAdminRealmURL(realm, "organizations", "members", idOfUser, "organizations"))
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
-	return result, err
+	return result, nil
 }
 
 // GetOrganizationMemberOrganizations returns organizations for a given user in a given organization
@@ -4736,11 +4737,11 @@ func (g *GoCloak) GetOrganizationMemberOrganizations(ctx context.Context, access
 	const errMessage = "could not get organization member organizations"
 
 	if idOfOrganization == "" {
-		return nil, errors.Wrap(errors.New("organizationID shall not be empty"), errMessage)
+		return nil, fmt.Errorf("%s: organizationID shall not be empty", errMessage)
 	}
 
 	if idOfUser == "" {
-		return nil, errors.Wrap(errors.New("userID shall not be empty"), errMessage)
+		return nil, fmt.Errorf("%s: userID shall not be empty", errMessage)
 	}
 
 	var result []*OrganizationRepresentation
@@ -4748,7 +4749,7 @@ func (g *GoCloak) GetOrganizationMemberOrganizations(ctx context.Context, access
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", idOfUser, "organizations"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4787,7 +4788,7 @@ func (g *GoCloak) GetOrganizationIdentityProviders(ctx context.Context, token, r
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "identity-providers"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4804,7 +4805,7 @@ func (g *GoCloak) GetOrganizationIdentityProvider(ctx context.Context, token, re
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "identity-providers", alias))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4830,7 +4831,7 @@ func (g *GoCloak) GetOrganizationCount(ctx context.Context, token, realm string,
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return 0, errors.Wrap(err, errMessage)
+		return 0, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -4838,7 +4839,7 @@ func (g *GoCloak) GetOrganizationCount(ctx context.Context, token, realm string,
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "organizations", "count"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return 0, err
 	}
 
@@ -4856,7 +4857,7 @@ func (g *GoCloak) GetOrganizationMemberGroups(ctx context.Context, token, realm,
 		SetQueryParam("briefRepresentation", strconv.FormatBool(briefRepresentation)).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "members", idOfUser, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4871,7 +4872,7 @@ func (g *GoCloak) GetOrganizationInvitations(ctx context.Context, token, realm, 
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -4879,7 +4880,7 @@ func (g *GoCloak) GetOrganizationInvitations(ctx context.Context, token, realm, 
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "invitations"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4896,7 +4897,7 @@ func (g *GoCloak) GetOrganizationInvitationByID(ctx context.Context, token, real
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "invitations", idOfInvitation))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4934,7 +4935,7 @@ func (g *GoCloak) AddOrganizationGroup(ctx context.Context, token, realm, idOfOr
 		SetBody(group).
 		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -4949,7 +4950,7 @@ func (g *GoCloak) GetOrganizationGroups(ctx context.Context, token, realm, idOfO
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -4957,7 +4958,7 @@ func (g *GoCloak) GetOrganizationGroups(ctx context.Context, token, realm, idOfO
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4975,7 +4976,7 @@ func (g *GoCloak) GetOrganizationGroupByPath(ctx context.Context, token, realm, 
 		SetQueryParam("subGroupsCount", strconv.FormatBool(subGroupsCount)).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups", "group-by-path", groupPath))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -4992,7 +4993,7 @@ func (g *GoCloak) GetOrganizationGroupByID(ctx context.Context, token, realm, id
 		SetResult(&result).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups", idOfGroup))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -5005,7 +5006,7 @@ func (g *GoCloak) UpdateOrganizationGroup(ctx context.Context, token, realm, idO
 	const errMessage = "could not update organization group"
 
 	if NilOrEmpty(group.ID) {
-		return errors.Wrap(errors.New("ID of a group required"), errMessage)
+		return fmt.Errorf("%s: ID of a group required", errMessage)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -5034,7 +5035,7 @@ func (g *GoCloak) GetOrganizationGroupSubgroups(ctx context.Context, token, real
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -5042,7 +5043,7 @@ func (g *GoCloak) GetOrganizationGroupSubgroups(ctx context.Context, token, real
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups", idOfGroup, "children"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 
@@ -5058,7 +5059,7 @@ func (g *GoCloak) AddOrganizationSubgroup(ctx context.Context, token, realm, idO
 		SetBody(group).
 		Post(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups", idOfGroup, "children"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
 
@@ -5073,7 +5074,7 @@ func (g *GoCloak) GetOrganizationGroupMembers(ctx context.Context, token, realm,
 
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
-		return nil, errors.Wrap(err, errMessage)
+		return nil, fmt.Errorf("%s: %w", errMessage, err)
 	}
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -5081,7 +5082,7 @@ func (g *GoCloak) GetOrganizationGroupMembers(ctx context.Context, token, realm,
 		SetQueryParams(queryParams).
 		Get(g.getAdminRealmURL(realm, "organizations", idOfOrganization, "groups", idOfGroup, "members"))
 
-	if err := checkForError(resp, err, errMessage); err != nil {
+	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
 

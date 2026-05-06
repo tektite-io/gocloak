@@ -16,7 +16,7 @@ import (
 // will add additional double quotes.
 // "string" tag allows to convert the non-string fields of a structure to map[string]string.
 // "omitempty" allows to skip the fields with default values.
-func GetQueryParams(s interface{}) (map[string]string, error) {
+func GetQueryParams(s any) (map[string]string, error) {
 	// if obj, ok := s.(GetGroupsParams); ok {
 	// 	obj.OnMarshal()
 	// 	s = obj
@@ -211,7 +211,7 @@ type User struct {
 	Email                      *string                     `json:"email,omitempty"`
 	FederationLink             *string                     `json:"federationLink,omitempty"`
 	Attributes                 *map[string][]string        `json:"attributes,omitempty"`
-	DisableableCredentialTypes *[]interface{}              `json:"disableableCredentialTypes,omitempty"`
+	DisableableCredentialTypes *[]any                      `json:"disableableCredentialTypes,omitempty"`
 	RequiredActions            *[]string                   `json:"requiredActions,omitempty"`
 	Access                     *map[string]bool            `json:"access,omitempty"`
 	ClientRoles                *map[string][]string        `json:"clientRoles,omitempty"`
@@ -470,7 +470,7 @@ type ProtocolMappersConfig struct {
 
 // Client is a ClientRepresentation
 type Client struct {
-	Access                             *map[string]interface{}         `json:"access,omitempty"`
+	Access                             *map[string]any                 `json:"access,omitempty"`
 	AdminURL                           *string                         `json:"adminUrl,omitempty"`
 	Attributes                         *map[string]string              `json:"attributes,omitempty"`
 	AuthenticationFlowBindingOverrides *map[string]string              `json:"authenticationFlowBindingOverrides,omitempty"`
@@ -535,12 +535,12 @@ type RoleDefinition struct {
 
 // AdapterConfiguration represents adapter configuration of a client
 type AdapterConfiguration struct {
-	Realm            *string     `json:"realm"`
-	AuthServerURL    *string     `json:"auth-server-url"`
-	SSLRequired      *string     `json:"ssl-required"`
-	Resource         *string     `json:"resource"`
-	Credentials      interface{} `json:"credentials"`
-	ConfidentialPort *int        `json:"confidential-port"`
+	Realm            *string `json:"realm"`
+	AuthServerURL    *string `json:"auth-server-url"`
+	SSLRequired      *string `json:"ssl-required"`
+	Resource         *string `json:"resource"`
+	Credentials      any     `json:"credentials"`
+	ConfidentialPort *int    `json:"confidential-port"`
 }
 
 // PolicyEnforcementMode is an enum type for PolicyEnforcementMode of ResourceServerRepresentation
@@ -755,8 +755,8 @@ type RealmRepresentation struct {
 	AdminEventsEnabled                                        *bool                             `json:"adminEventsEnabled,omitempty"`
 	AdminTheme                                                *string                           `json:"adminTheme,omitempty"`
 	Attributes                                                *map[string]string                `json:"attributes,omitempty"`
-	AuthenticationFlows                                       *[]interface{}                    `json:"authenticationFlows,omitempty"`
-	AuthenticatorConfig                                       *[]interface{}                    `json:"authenticatorConfig,omitempty"`
+	AuthenticationFlows                                       *[]any                            `json:"authenticationFlows,omitempty"`
+	AuthenticatorConfig                                       *[]any                            `json:"authenticatorConfig,omitempty"`
 	BruteForceProtected                                       *bool                             `json:"bruteForceProtected,omitempty"`
 	BruteForceStrategy                                        *string                           `json:"bruteForceStrategy,omitempty"`
 	BrowserFlow                                               *string                           `json:"browserFlow,omitempty"`
@@ -764,9 +764,9 @@ type RealmRepresentation struct {
 	ClientOfflineSessionIdleTimeout                           *int                              `json:"clientOfflineSessionIdleTimeout,omitempty"`
 	ClientOfflineSessionMaxLifespan                           *int                              `json:"clientOfflineSessionMaxLifespan,omitempty"`
 	ClientAuthenticationFlow                                  *string                           `json:"clientAuthenticationFlow,omitempty"`
-	ClientPolicies                                            *map[string][]interface{}         `json:"clientPolicies,omitempty"`
-	ClientProfiles                                            *map[string][]interface{}         `json:"clientProfiles,omitempty"`
-	ClientScopeMappings                                       *map[string][]interface{}         `json:"clientScopeMappings,omitempty"`
+	ClientPolicies                                            *map[string][]any                 `json:"clientPolicies,omitempty"`
+	ClientProfiles                                            *map[string][]any                 `json:"clientProfiles,omitempty"`
+	ClientScopeMappings                                       *map[string][]any                 `json:"clientScopeMappings,omitempty"`
 	ClientScopes                                              *[]ClientScope                    `json:"clientScopes,omitempty"`
 	ClientSessionIdleTimeout                                  *int                              `json:"clientSessionIdleTimeout,omitempty"`
 	ClientSessionMaxLifespan                                  *int                              `json:"clientSessionMaxLifespan,omitempty"`
@@ -790,7 +790,7 @@ type RealmRepresentation struct {
 	EventsEnabled                                             *bool                             `json:"eventsEnabled,omitempty"`
 	EventsListeners                                           *[]string                         `json:"eventsListeners,omitempty"`
 	FailureFactor                                             *int                              `json:"failureFactor,omitempty"`
-	FederatedUsers                                            *[]interface{}                    `json:"federatedUsers,omitempty"`
+	FederatedUsers                                            *[]any                            `json:"federatedUsers,omitempty"`
 	Groups                                                    *[]Group                          `json:"groups,omitempty"`
 	ID                                                        *string                           `json:"id,omitempty"`
 	IdentityProviderMappers                                   *[]IdentityProviderMapper         `json:"identityProviderMappers,omitempty"`
@@ -821,7 +821,7 @@ type RealmRepresentation struct {
 	OTPSupportedApplications                                  *[]string                         `json:"otpSupportedApplications,omitempty"`
 	PasswordPolicy                                            *string                           `json:"passwordPolicy,omitempty"`
 	PermanentLockout                                          *bool                             `json:"permanentLockout,omitempty"`
-	ProtocolMappers                                           *[]interface{}                    `json:"protocolMappers,omitempty"`
+	ProtocolMappers                                           *[]any                            `json:"protocolMappers,omitempty"`
 	QuickLoginCheckMilliSeconds                               *int                              `json:"quickLoginCheckMilliSeconds,omitempty"`
 	Realm                                                     *string                           `json:"realm,omitempty"`
 	RefreshTokenMaxReuse                                      *int                              `json:"refreshTokenMaxReuse,omitempty"`
@@ -829,7 +829,7 @@ type RealmRepresentation struct {
 	RegistrationEmailAsUsername                               *bool                             `json:"registrationEmailAsUsername,omitempty"`
 	RegistrationFlow                                          *string                           `json:"registrationFlow,omitempty"`
 	RememberMe                                                *bool                             `json:"rememberMe,omitempty"`
-	RequiredActions                                           *[]interface{}                    `json:"requiredActions,omitempty"`
+	RequiredActions                                           *[]any                            `json:"requiredActions,omitempty"`
 	ResetCredentialsFlow                                      *string                           `json:"resetCredentialsFlow,omitempty"`
 	RequiredCredentials                                       *[]string                         `json:"requiredCredentials,omitempty"`
 	ResetPasswordAllowed                                      *bool                             `json:"resetPasswordAllowed,omitempty"`
@@ -839,11 +839,11 @@ type RealmRepresentation struct {
 	SSOSessionMaxLifespan                                     *int                              `json:"ssoSessionMaxLifespan,omitempty"`
 	SSOSessionMaxLifespanRememberMe                           *int                              `json:"ssoSessionMaxLifespanRememberMe,omitempty"`
 	SMTPServer                                                *map[string]string                `json:"smtpServer,omitempty"`
-	ScopeMappings                                             *[]interface{}                    `json:"scopeMappings,omitempty"`
+	ScopeMappings                                             *[]any                            `json:"scopeMappings,omitempty"`
 	SSLRequired                                               *string                           `json:"sslRequired,omitempty"`
 	SupportedLocales                                          *[]string                         `json:"supportedLocales,omitempty"`
-	UserFederationMappers                                     *[]interface{}                    `json:"userFederationMappers,omitempty"`
-	UserFederationProviders                                   *[]interface{}                    `json:"userFederationProviders,omitempty"`
+	UserFederationMappers                                     *[]any                            `json:"userFederationMappers,omitempty"`
+	UserFederationProviders                                   *[]any                            `json:"userFederationProviders,omitempty"`
 	UserManagedAccessAllowed                                  *bool                             `json:"userManagedAccessAllowed,omitempty"`
 	Users                                                     *[]User                           `json:"users,omitempty"`
 	VerifyEmail                                               *bool                             `json:"verifyEmail,omitempty"`
@@ -1679,7 +1679,7 @@ type OrganizationInvitationRepresentation struct {
 }
 
 // prettyStringStruct returns struct formatted into pretty string
-func prettyStringStruct(t interface{}) string {
+func prettyStringStruct(t any) string {
 	json, err := json.MarshalIndent(t, "", "\t")
 	if err != nil {
 		return ""

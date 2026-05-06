@@ -85,7 +85,7 @@ func Float64P(value float64) *float64 {
 	return &value
 }
 
-// PFloat32 returns an flaot32 value from a pointer
+// PFloat32 returns a float32 value from a pointer
 func PFloat32(value *float32) float32 {
 	if value == nil {
 		return 0
@@ -93,7 +93,7 @@ func PFloat32(value *float32) float32 {
 	return *value
 }
 
-// PFloat64 returns an flaot64 value from a pointer
+// PFloat64 returns a float64 value from a pointer
 func PFloat64(value *float64) float64 {
 	if value == nil {
 		return 0

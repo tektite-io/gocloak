@@ -18,7 +18,7 @@ import (
 )
 
 // SignClaims signs the given claims using a given key and a method
-func SignClaims(claims jwt.Claims, key interface{}, method jwt.SigningMethod) (string, error) {
+func SignClaims(claims jwt.Claims, key any, method jwt.SigningMethod) (string, error) {
 	token := jwt.NewWithClaims(method, claims)
 	return token.SignedString(key)
 }
@@ -124,7 +124,7 @@ func DecodeAccessTokenRSACustomClaims(accessToken string, e, n *string, customCl
 		return nil, errors.Wrap(err, errMessage)
 	}
 
-	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (interface{}, error) {
+	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (any, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -148,7 +148,7 @@ func DecodeAccessTokenECDSACustomClaims(accessToken string, x, y, crv *string, c
 		return nil, errors.Wrap(err, errMessage)
 	}
 
-	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (interface{}, error) {
+	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (any, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

@@ -32,7 +32,7 @@ type GoCloakIface interface {
 	// GetUserInfo calls the UserInfo endpoint
 	GetUserInfo(ctx context.Context, accessToken, realm string) (*UserInfo, error)
 	// GetRawUserInfo calls the UserInfo endpoint and returns a raw json object
-	GetRawUserInfo(ctx context.Context, accessToken, realm string) (map[string]interface{}, error)
+	GetRawUserInfo(ctx context.Context, accessToken, realm string) (map[string]any, error)
 	// GetCerts fetches certificates for the given realm from the public /open-id-connect/certs endpoint
 	GetCerts(ctx context.Context, realm string) (*CertResponse, error)
 	// GetIssuer gets the issuer of the given realm
@@ -65,7 +65,7 @@ type GoCloakIface interface {
 	// See: https://www.keycloak.org/docs/latest/securing_apps/index.html#direct-naked-impersonation
 	DirectNakedImpersonationTokenExchange(ctx context.Context, clientID, clientSecret, realm, userID string) (*JWT, error)
 	// LoginClientSignedJWT performs a login with client credentials and signed jwt claims
-	LoginClientSignedJWT(ctx context.Context, clientID, realm string, key interface{}, signedMethod jwt.SigningMethod, expiresAt *jwt.NumericDate) (*JWT, error)
+	LoginClientSignedJWT(ctx context.Context, clientID, realm string, key any, signedMethod jwt.SigningMethod, expiresAt *jwt.NumericDate) (*JWT, error)
 	// Login performs a login with user credentials and a client
 	Login(ctx context.Context, clientID, clientSecret, realm, username, password string) (*JWT, error)
 	// LoginOtp performs a login with user credentials and otp token
