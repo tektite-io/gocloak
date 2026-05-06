@@ -3269,14 +3269,19 @@ func Test_GetUserBruteForceDetectionStatus(t *testing.T) {
 		*fetchedUser.Username,
 		"wrong password")
 	require.Error(t, err, "401 Unauthorized: invalid_grant: Invalid user credentials")
-	bruteForceStatus, err := client.GetUserBruteForceDetectionStatus(
-		context.Background(),
-		token.AccessToken,
-		cfg.GoCloak.Realm,
-		userID)
-	require.NoError(t, err, "Getting attack log failed")
-	require.Equal(t, 1, *bruteForceStatus.NumFailures, "Should return one failure")
-	require.Equal(t, true, *bruteForceStatus.Disabled, "The user shouldn be locked")
+
+	// Keycloak 26+ processes brute-force events asynchronously, so poll until the status is updated.
+	var bruteForceStatus *gocloak.BruteForceStatus
+	require.Eventually(t, func() bool {
+		bruteForceStatus, err = client.GetUserBruteForceDetectionStatus(
+			context.Background(),
+			token.AccessToken,
+			cfg.GoCloak.Realm,
+			userID)
+		return err == nil &&
+			bruteForceStatus.NumFailures != nil && *bruteForceStatus.NumFailures == 1 &&
+			bruteForceStatus.Disabled != nil && *bruteForceStatus.Disabled
+	}, 5*time.Second, 100*time.Millisecond, "brute force status should show one failure and locked user")
 
 	time.Sleep(2 * time.Second)
 	_, err = client.Login(
@@ -3288,14 +3293,16 @@ func Test_GetUserBruteForceDetectionStatus(t *testing.T) {
 		cfg.GoCloak.Password)
 	require.NoError(t, err, "Login failed")
 
-	bruteForceStatus, err = client.GetUserBruteForceDetectionStatus(
-		context.Background(),
-		token.AccessToken,
-		cfg.GoCloak.Realm,
-		userID)
-	require.NoError(t, err, "Getting attack status failed")
-	require.Equal(t, 0, *bruteForceStatus.NumFailures, "Should return zero failures")
-	require.Equal(t, false, *bruteForceStatus.Disabled, "The user shouldn't be locked")
+	require.Eventually(t, func() bool {
+		bruteForceStatus, err = client.GetUserBruteForceDetectionStatus(
+			context.Background(),
+			token.AccessToken,
+			cfg.GoCloak.Realm,
+			userID)
+		return err == nil &&
+			bruteForceStatus.NumFailures != nil && *bruteForceStatus.NumFailures == 0 &&
+			bruteForceStatus.Disabled != nil && !*bruteForceStatus.Disabled
+	}, 5*time.Second, 100*time.Millisecond, "brute force status should clear after successful login")
 
 	err = client.UpdateRealm(
 		context.Background(),
