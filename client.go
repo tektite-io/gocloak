@@ -2904,7 +2904,6 @@ func (g *GoCloak) UpdateUserProfileConfig(ctx context.Context, token, realm stri
 	return checkForError(resp, err, errMessage)
 }
 
-
 // AddUserToGroup puts given user to given group
 func (g *GoCloak) AddUserToGroup(ctx context.Context, token, realm, userID, groupID string) error {
 	const errMessage = "could not add user to group"

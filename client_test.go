@@ -1,4 +1,4 @@
-﻿package gocloak_test
+package gocloak_test
 
 import (
 	"bytes"

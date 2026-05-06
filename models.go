@@ -1739,7 +1739,7 @@ type UnmanagedAttributePolicy string
 const (
 	// UnmanagedAttributePolicyEnabled indicates that unmanaged attributes are enabled and can be used in user profile
 	UnmanagedAttributePolicyEnabled UnmanagedAttributePolicy = "ENABLED"
-	// UnmanagedAttributePolicyDisabled indicates that unmanaged attributes are disabled and cannot be used in user profile
+	// UnmanagedAttributePolicyAdminView indicates that unmanaged attributes are disabled and cannot be used in user profile
 	UnmanagedAttributePolicyAdminView UnmanagedAttributePolicy = "ADMIN_VIEW"
 	// UnmanagedAttributePolicyAdminEdit indicates that unmanaged attributes are enabled but can only be viewed and edited by admin in user profile
 	UnmanagedAttributePolicyAdminEdit UnmanagedAttributePolicy = "ADMIN_EDIT"
