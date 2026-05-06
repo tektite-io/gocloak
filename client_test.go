@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -50,10 +50,11 @@ type Config struct {
 }
 
 var (
-	config     *Config
-	configOnce sync.Once
-	setupOnce  sync.Once
-	testUserID string
+	config      *Config
+	configOnce  sync.Once
+	setupOnce   sync.Once
+	testUserID  string
+	testNameSeq atomic.Uint64
 )
 
 const (
@@ -127,10 +128,7 @@ func GetAdminToken(t testing.TB, client gocloak.GoCloakIface) *gocloak.JWT {
 }
 
 func GetRandomName(name string) string {
-	s1 := rand.NewSource(time.Now().UnixNano())
-	r1 := rand.New(s1)
-	randomNumber := r1.Intn(100000)
-	return name + strconv.Itoa(randomNumber)
+	return name + strconv.FormatUint(testNameSeq.Add(1), 10)
 }
 
 func GetRandomNameP(name string) *string {
@@ -7105,7 +7103,6 @@ func Test_UpdateComponent(t *testing.T) {
 }
 
 func Test_RevokeToken(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
