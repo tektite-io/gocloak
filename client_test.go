@@ -690,7 +690,7 @@ func Test_UpdateUserProfileConfig(t *testing.T) {
 
 	policy := gocloak.UnmanagedAttributePolicyEnabled
 	userProfileConfig.UnmanagedAttributePolicy = &policy
-	
+
 	userProfileConfig.Attributes = append(userProfileConfig.Attributes, gocloak.UserProfileAttribute{
 		Name:        gocloak.StringP(GetRandomName("foo")),
 		DisplayName: gocloak.StringP("Foo"),
@@ -3387,8 +3387,10 @@ func Test_CreateUserCustomAttributes(t *testing.T) {
 		userID)
 	require.NoError(t, err, "GetUserByID failed")
 	require.NotNil(t, fetchedUser.Attributes)
-	ok := gocloak.UserAttributeContains(fetchedUser.Attributes, "foo", "alice")
+
+	ok := gocloak.UserAttributeContains(fetchedUser.Attributes, "bar", "baz")
 	require.False(t, !ok, "User doesn't have custom attributes")
+
 	ok = gocloak.UserAttributeContains(fetchedUser.Attributes, "foo2", "alice")
 	require.False(t, ok, "User's custom attributes contains unexpected attribute")
 	t.Log(fetchedUser)
