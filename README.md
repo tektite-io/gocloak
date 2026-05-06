@@ -1,6 +1,5 @@
 # gocloak
 
-[![codebeat badge](https://codebeat.co/badges/18a37f35-6a95-4e40-9e78-272233892332)](https://codebeat.co/projects/github-com-nerzal-gocloak-main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nerzal/gocloak)](https://goreportcard.com/report/github.com/Nerzal/gocloak)
 [![Go Doc](https://godoc.org/github.com/Nerzal/gocloak?status.svg)](https://godoc.org/github.com/Nerzal/gocloak)
 [![Build Status](https://github.com/Nerzal/gocloak/workflows/Tests/badge.svg)](https://github.com/Nerzal/gocloak/actions?query=branch%3Amain+event%3Apush)
@@ -23,7 +22,6 @@ If u are using the echo framework have a look at [gocloak-echo](https://github.c
 ## Changelog
 
 For release notes please consult the specific releases [here](https://github.com/Nerzal/gocloak/releases)
-
 
 ## Usage
 
@@ -116,7 +114,6 @@ To get the `clientId` from `id`, use `GetClients` method with `GetClientsParams{
 
 [GoCloakIface](gocloak_iface.go) holds all methods a client should fulfil.
 
-
 ## Configure gocloak to skip TLS Insecure Verification
 
 ```go
@@ -190,7 +187,7 @@ yields a large set of pointer values
 {<nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> 0xc00000e960 <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> 0xc000093cf0 <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> null <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil> <nil>}
 ```
 
-For convenience, the ```String()``` interface has been added so you can easily see the contents, even for nested custom types. For example,
+For convenience, the `String()` interface has been added so you can easily see the contents, even for nested custom types. For example,
 
 ```go
 fmt.Println(someRealmRepresentation.String())
@@ -200,40 +197,40 @@ yields
 
 ```json
 {
- "clients": [
-  {
-   "name": "someClient",
-   "protocolMappers": [
+  "clients": [
     {
-     "config": {
-      "bar": "foo",
-      "ping": "pong"
-     },
-     "name": "someMapper"
+      "name": "someClient",
+      "protocolMappers": [
+        {
+          "config": {
+            "bar": "foo",
+            "ping": "pong"
+          },
+          "name": "someMapper"
+        }
+      ]
+    },
+    {
+      "name": "AnotherClient"
     }
-   ]
-  },
-  {
-   "name": "AnotherClient"
-  }
- ],
- "displayName": "someRealm"
+  ],
+  "displayName": "someRealm"
 }
 ```
 
-Note that empty parameters are not included, because of the use of ```omitempty``` in the type definitions.
+Note that empty parameters are not included, because of the use of `omitempty` in the type definitions.
 
 ## Examples
 
-* [Add client role to user](./examples/ADD_CLIENT_ROLE_TO_USER.md)
+- [Add client role to user](./examples/ADD_CLIENT_ROLE_TO_USER.md)
 
-* [Create User Federation & Sync](./examples/USER_FEDERATION.md)
+- [Create User Federation & Sync](./examples/USER_FEDERATION.md)
 
-* [Create User Federation & Sync with group ldap mapper](./examples/USER_FEDERATION_GROUP_LDAP_MAPPER.md)
+- [Create User Federation & Sync with group ldap mapper](./examples/USER_FEDERATION_GROUP_LDAP_MAPPER.md)
 
-* [Create User Federation & Sync with role ldap mapper](./examples/USER_FEDERATION_ROLE_LDAP_MAPPER.md)
+- [Create User Federation & Sync with role ldap mapper](./examples/USER_FEDERATION_ROLE_LDAP_MAPPER.md)
 
-* [Create User Federation & Sync with user attribute ldap mapper](./examples/USER_FEDERATION_USER_ATTRIBUTE_LDAP_MAPPER.md)
+- [Create User Federation & Sync with user attribute ldap mapper](./examples/USER_FEDERATION_USER_ATTRIBUTE_LDAP_MAPPER.md)
 
 ## License
 
