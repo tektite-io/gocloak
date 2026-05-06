@@ -2788,6 +2788,7 @@ func (g *GoCloak) GetUserGroups(ctx context.Context, token, realm, userID string
 }
 
 // GetUsers get all users in realm
+// Default number of results per page is 100, use GetUsersParams to specify it explicitly or to set offset for pagination
 func (g *GoCloak) GetUsers(ctx context.Context, token, realm string, params GetUsersParams) ([]*User, error) {
 	const errMessage = "could not get users"
 
