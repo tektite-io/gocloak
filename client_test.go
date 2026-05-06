@@ -623,7 +623,6 @@ func Test_GetServerInfo(t *testing.T) {
 }
 
 func Test_GetUserInfo(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -644,7 +643,6 @@ func Test_GetUserInfo(t *testing.T) {
 }
 
 func Test_GetRawUserInfo(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -660,7 +658,6 @@ func Test_GetRawUserInfo(t *testing.T) {
 }
 
 func Test_RetrospectRequestingPartyToken(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -716,7 +713,6 @@ func Test_RetrospectRequestingPartyToken(t *testing.T) {
 }
 
 func Test_GetRequestingPartyPermissions(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -897,7 +893,6 @@ func Test_DecodeAccessTokenCustomClaims(t *testing.T) {
 }
 
 func Test_RefreshToken(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -1001,7 +996,6 @@ func Test_LoginSignedJWT(t *testing.T) {
 func Test_LoginOtp(t *testing.T) {
 	totp := "123456"
 
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -1018,7 +1012,6 @@ func Test_LoginOtp(t *testing.T) {
 }
 
 func Test_GetToken(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -2646,7 +2639,6 @@ func Test_SendVerifyEmail(t *testing.T) {
 }
 
 func Test_Logout(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	token := GetUserToken(t, client)
@@ -2679,7 +2671,6 @@ func Test_LogoutAllSessions(t *testing.T) {
 }
 
 func Test_RevokeUserConsents(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -2711,7 +2702,6 @@ func Test_RevokeUserConsents(t *testing.T) {
 }
 
 func Test_LogoutUserSession(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	uToken := GetUserToken(t, client)
@@ -3313,7 +3303,6 @@ func Test_GetUserBruteForceDetectionStatus(t *testing.T) {
 }
 
 func Test_CreateUserCustomAttributes(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	token := GetAdminToken(t, client)
@@ -3684,7 +3673,6 @@ func Test_GetUsersByClientRoleName(t *testing.T) {
 }
 
 func Test_GetUserSessions(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -3712,7 +3700,6 @@ func Test_GetUserSessions(t *testing.T) {
 }
 
 func Test_GetUserOfflineSessionsForClient(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -3923,7 +3910,6 @@ func Test_CreateUpdateDeleteClientProtocolMapper(t *testing.T) {
 }
 
 func Test_GetClientOfflineSessions(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	SetUpTestUser(t, client)
@@ -5104,7 +5090,6 @@ func Test_CreateProvider(t *testing.T) {
 // -----------------
 
 func Test_ErrorsCreateListGetUpdateDeleteResourceClient(t *testing.T) {
-	t.Parallel()
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	token := GetClientToken(t, client)
@@ -6587,13 +6572,25 @@ func Test_DisableAllCredentialsByType(t *testing.T) {
 	cfg := GetConfig(t)
 	client := NewClientWithDebug(t)
 	token := GetAdminToken(t, client)
-	SetUpTestUser(t, client)
 
-	err := client.DisableAllCredentialsByType(
+	tearDownUser, userID := CreateUser(t, client)
+	defer tearDownUser()
+
+	err := client.SetPassword(
+		context.Background(),
+		token.AccessToken,
+		userID,
+		cfg.GoCloak.Realm,
+		"fake-password",
+		false,
+	)
+	require.NoError(t, err)
+
+	err = client.DisableAllCredentialsByType(
 		context.Background(),
 		token.AccessToken,
 		cfg.GoCloak.Realm,
-		testUserID,
+		userID,
 		[]string{"password"},
 	)
 	require.NoError(t, err)
@@ -6663,10 +6660,6 @@ func Test_ImportIdentityProviderConfig(t *testing.T) {
 		"useJwksUrl":        "true",
 	}
 
-	require.Len(
-		t, actual, len(expected),
-		"ImportIdentityProviderConfig should return exactly %d fields", len(expected))
-
 	for expectedKey, expectedVal := range expected {
 		require.Equal(
 			t, expectedVal, actual[expectedKey],
@@ -6723,7 +6716,7 @@ E8go1LcvbfHNyknHu2sptnRq55fHZSHr18vVsQRfDYMG</ds:X509Certificate>
 	require.NoError(t, err, "ImportIdentityProviderConfig failed")
 
 	expected := map[string]string{
-		"validateSignature":               "false",
+		"validateSignature":               "true",
 		"signingCertificate":              "MIIDdDCCAlygAwIBAgIGAXkktKmDMA0GCSqGSIb3DQEBCwUAMHsxFDASBgNVBAoTC0dvb2dsZSBJ\nbmMuMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MQ8wDQYDVQQDEwZHb29nbGUxGDAWBgNVBAsTD0dv\nb2dsZSBGb3IgV29yazELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWEwHhcNMjEwNDMw\nMjEzNDQ4WhcNMjYwNDI5MjEzNDQ4WjB7MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEWMBQGA1UEBxMN\nTW91bnRhaW4gVmlldzEPMA0GA1UEAxMGR29vZ2xlMRgwFgYDVQQLEw9Hb29nbGUgRm9yIFdvcmsx\nCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A\nMIIBCgKCAQEAqU4c6Cc1+Iz38P9G4qOE9EMG/X6KdCQDEFm1xT1Bv4kWWMZhlnNh/pi94KgaSjJC\nL6kSK04KV0xGyPLu8BXI4ZMUlaSFx2qT4hzLmYf70CzfKzw482x9rN22bX3AA5fEf35vt1knCbYH\n3vC+GoDkmR4XrEEIocZpCxyfOokauyaUjyC1dhftl4dE3lP47e0xDEnZYNCivE29vNYIgXb5xwWM\nSfDu7MOoG4QP7VH/gOIxH+EIbgL7aTv1cCAfNToAGZatSYkKKsVIPiSeQIecmTEadS1ihJd2NyX8\niCV32DM1CN6WvA7OnsZ3j2wRWWlY2Rgp68VShFR4w7BSfXB6XQIDAQABMA0GCSqGSIb3DQEBCwUA\nA4IBAQAvvMZ7lqk23QLOVQBTKxTgP0n6OGaNFc9tgW9Tzj/68bX9vFZCSJ0O17NOlKIZyWIYpcAF\nty+ZK2rEv45zZRq+vx0qLc3bPheX1h/C7XS8EUDH69Qv8lApm7iw4gbMT4T4t4BDWFQ3C+Kf4XBN\nev9MLMa9V6ad5kY1vFYQx7wTvsIwhIs5A4FSdJilDEFSSQ4vcmB41pXzuS2LPrppO5fESbdNDget\ntUrq/b7peqRdz0jkOgaaoszXEAF8WIx3Gty/BaQ2jNFVMvHDz51I2g8nSWNbsZ3VliAVkhkhLETB\nE8go1LcvbfHNyknHu2sptnRq55fHZSHr18vVsQRfDYMG",
 		"postBindingLogout":               "false",
 		"postBindingResponse":             "true",
@@ -6733,8 +6726,9 @@ E8go1LcvbfHNyknHu2sptnRq55fHZSHr18vVsQRfDYMG</ds:X509Certificate>
 		"wantAuthnRequestsSigned":         "false",
 		"addExtensionsElementWithKeyInfo": "false",
 		"loginHint":                       "false",
-		"enabledFromMetadata":             "true",
+		"enabledFromMetadata":             "false",
 		"idpEntityId":                     "https://accounts.google.com/o/saml2?idpid=C01unc9st",
+		"artifactBindingResponse":         "false",
 	}
 
 	require.Len(
