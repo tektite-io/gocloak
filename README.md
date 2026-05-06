@@ -16,8 +16,6 @@ For Questions either raise an issue, or come to the [gopher-slack](https://invit
 
 If u are using the echo framework have a look at [gocloak-echo](https://github.com/Nerzal/gocloak-echo)
 
-Benchmarks can be found [here](https://nerzal.github.io/gocloak/dev/bench/)
-
 ## Contribution
 
 (WIP) <https://github.com/Nerzal/gocloak/wiki/Contribute>

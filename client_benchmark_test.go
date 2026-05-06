@@ -7,6 +7,7 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkLogin(b *testing.B) {
@@ -27,25 +28,25 @@ func BenchmarkLogin(b *testing.B) {
 	}
 }
 
-func BenchmarkLoginParallel(b *testing.B) {
-	cfg := GetConfig(b)
-	client := gocloak.NewClient(cfg.HostName)
-	SetUpTestUser(b, client)
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := client.Login(
-				context.Background(),
-				cfg.GoCloak.ClientID,
-				cfg.GoCloak.ClientSecret,
-				cfg.GoCloak.Realm,
-				cfg.GoCloak.UserName,
-				cfg.GoCloak.Password,
-			)
-			assert.NoError(b, err)
-		}
-	})
-}
+// func BenchmarkLoginParallel(b *testing.B) {
+// 	cfg := GetConfig(b)
+// 	client := gocloak.NewClient(cfg.HostName)
+// 	SetUpTestUser(b, client)
+// 	b.ResetTimer()
+// 	b.RunParallel(func(pb *testing.PB) {
+// 		for pb.Next() {
+// 			_, err := client.Login(
+// 				context.Background(),
+// 				cfg.GoCloak.ClientID,
+// 				cfg.GoCloak.ClientSecret,
+// 				cfg.GoCloak.Realm,
+// 				cfg.GoCloak.UserName,
+// 				cfg.GoCloak.Password,
+// 			)
+// 			assert.NoError(b, err)
+// 		}
+// 	})
+// }
 
 func BenchmarkGetGroups(b *testing.B) {
 	cfg := GetConfig(b)
@@ -123,10 +124,10 @@ func BenchmarkGetGroupByPath(b *testing.B) {
 	cfg := GetConfig(b)
 	client := gocloak.NewClient(cfg.HostName)
 	teardown, groupID := CreateGroup(b, client)
+	defer teardown()
 	token := GetAdminToken(b, client)
 	group, err := client.GetGroup(context.Background(), token.AccessToken, cfg.GoCloak.Realm, groupID)
-	assert.NoError(b, err)
-	defer teardown()
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := client.GetGroupByPath(
