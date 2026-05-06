@@ -993,7 +993,7 @@ func Test_LoginSignedJWT(t *testing.T) {
 		cfg.GoCloak.Realm,
 		rsaKey,
 		jwt.SigningMethodRS256,
-		&jwt.NumericDate{Time: time.Now().Add(2 * time.Hour)},
+		&jwt.NumericDate{Time: time.Now().Add(30 * time.Second)},
 	)
 	require.NoError(t, err, "Login failed")
 }
