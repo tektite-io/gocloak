@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Nerzal/gocloak/v13"
+	"github.com/Nerzal/gocloak/v14"
 
 	"github.com/stretchr/testify/assert"
 )
